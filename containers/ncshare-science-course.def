@@ -1,0 +1,168 @@
+Bootstrap: docker
+From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
+
+# This single image supports both course applications:
+#   1. inoisy4d: C/MPI + parallel HDF5 + GSL + HYPRE
+#   2. QuantUI: Python + PySCF/gpu4pyscf + Jupyter visualization tools
+#
+# The CUDA development base is deliberate. CPU jobs use the same image without
+# --nv; GPU jobs add --nv so Apptainer exposes the host NVIDIA driver/devices.
+
+%labels
+    Maintainer "NCShare Crash Course instructors"
+    Purpose "Containerized CPU, MPI, GPU, Jupyter, and post-processing course environment"
+    BaseImage "nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04"
+    HYPREVersion "3.1.0"
+    inoisy4dCommit "437973e6aa35228a0df08deea1b652bb85ae467e"
+    QuantUICommit "fcf0c08944d360f510ea274eaa0315e2d7e530b7"
+    BlueprintVersion "1.0.0"
+
+%help
+    NCShare science-course image
+
+    Included:
+      - Open MPI, parallel HDF5, GSL, and HYPRE with maxdim=4
+      - unmodified inoisy4d built at a recorded Git commit
+      - Python 3.11, QuantUI, PySCF/gpu4pyscf, JupyterLab, h5py,
+        NumPy, pandas, Matplotlib, and Seaborn
+
+    Common commands:
+      apptainer run IMAGE.sif
+      apptainer exec IMAGE.sif inoisy4d --help
+      apptainer exec IMAGE.sif python --version
+      apptainer exec --nv IMAGE.sif quantui gpu check
+
+    The scheduler, host GPU driver, course files, and research data remain
+    outside the image and are supplied by NCShare at runtime.
+
+%environment
+    export LANG="C.UTF-8"
+    export LC_ALL="C.UTF-8"
+    export PATH="/opt/course-env/bin:/opt/inoisy4d:${PATH}"
+    export LD_LIBRARY_PATH="/opt/hypre/lib:/usr/lib/x86_64-linux-gnu/openmpi/lib:${LD_LIBRARY_PATH:-}"
+    export HYPRE_PREFIX="/opt/hypre"
+    export INOISY_SRC="/opt/inoisy4d"
+    export QUANTUI_SRC="/opt/QuantUI"
+    export PYTHONNOUSERSITE=1
+    export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+
+%post
+    set -eux
+    export DEBIAN_FRONTEND=noninteractive
+    export LANG=C.UTF-8
+    export LC_ALL=C.UTF-8
+
+    # ---- System toolchain and compiled libraries ---------------------------
+    apt-get update
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        ca-certificates \
+        curl \
+        git \
+        hdf5-tools \
+        libgsl-dev \
+        libhdf5-openmpi-dev \
+        libopenmpi-dev \
+        openmpi-bin \
+        pkg-config \
+        wget
+    rm -rf /var/lib/apt/lists/*
+
+    # ---- HYPRE: nonstandard inoisy4d dependency ----------------------------
+    HYPRE_VERSION="v3.1.0"
+    mkdir -p /opt/src
+    git clone --depth 1 --branch "${HYPRE_VERSION}" \
+        https://github.com/hypre-space/hypre.git /opt/src/hypre
+    cd /opt/src/hypre/src
+    ./configure \
+        --prefix=/opt/hypre \
+        --enable-bigint \
+        --enable-maxdim=4 \
+        --disable-fortran \
+        CC=mpicc \
+        CXX=mpicxx
+    make -j"$(nproc)"
+    make install
+
+    # ---- inoisy4d: compile the upstream source without editing it ----------
+    INOISY_COMMIT="437973e6aa35228a0df08deea1b652bb85ae467e"
+    git clone https://github.com/alejandroc137/inoisy4d.git /opt/inoisy4d
+    git -C /opt/inoisy4d checkout "${INOISY_COMMIT}"
+    cd /opt/inoisy4d
+    H5PCC="$(command -v h5pcc.openmpi || command -v h5pcc)"
+    make -j"$(nproc)" HYPRE_DIR=/opt/hypre CC="${H5PCC}"
+
+    # ---- Isolated Python 3.11 environment ---------------------------------
+    MINIFORGE_VERSION="25.3.0-3"
+    curl -fsSL \
+        "https://github.com/conda-forge/miniforge/releases/download/${MINIFORGE_VERSION}/Miniforge3-${MINIFORGE_VERSION}-Linux-x86_64.sh" \
+        -o /tmp/miniforge.sh
+    bash /tmp/miniforge.sh -b -p /opt/conda
+    rm -f /tmp/miniforge.sh
+
+    /opt/conda/bin/mamba create -y -p /opt/course-env \
+        --override-channels -c conda-forge \
+        python=3.11 \
+        pip \
+        ipykernel \
+        jupyterlab \
+        h5py \
+        matplotlib \
+        nbformat \
+        numpy \
+        pandas \
+        pyscf \
+        rdkit \
+        scipy \
+        seaborn
+
+    # ---- QuantUI and CUDA 12.x Python packages -----------------------------
+    QUANTUI_COMMIT="fcf0c08944d360f510ea274eaa0315e2d7e530b7"
+    git clone https://github.com/The-Schultz-Lab/QuantUI.git /opt/QuantUI
+    git -C /opt/QuantUI checkout "${QUANTUI_COMMIT}"
+    /opt/course-env/bin/python -m pip install --no-cache-dir \
+        -e "/opt/QuantUI[pyscf,ase,app]"
+    /opt/course-env/bin/python -m pip install --no-cache-dir \
+        gpu4pyscf-cuda12x \
+        cupy-cuda12x \
+        cutensor-cu12
+
+    # Record the resolved packages inside the image. The definition records
+    # intent; these manifests record the exact result of this build.
+    mkdir -p /opt/course-build
+    /opt/conda/bin/conda list -p /opt/course-env --explicit \
+        > /opt/course-build/conda-explicit.txt
+    /opt/course-env/bin/python -m pip freeze \
+        > /opt/course-build/pip-freeze.txt
+    git -C /opt/inoisy4d rev-parse HEAD \
+        > /opt/course-build/inoisy4d-commit.txt
+    git -C /opt/QuantUI rev-parse HEAD \
+        > /opt/course-build/quantui-commit.txt
+
+    # Keep source required by the exercises and upstream post-processor, but
+    # remove package caches and HYPRE's temporary source tree.
+    /opt/conda/bin/conda clean -afy
+    rm -rf /root/.cache /tmp/* /opt/src/hypre
+
+%runscript
+    echo "NCShare science-course container"
+    echo "CPU/MPI: inoisy4d + HYPRE + parallel HDF5 + Open MPI"
+    echo "GPU/Python: QuantUI + gpu4pyscf + CUDA 12.x wheels"
+    echo "Python: $(python --version 2>&1)"
+    echo "MPI: $(mpirun --version | head -n 1)"
+    echo "inoisy4d commit: $(cat /opt/course-build/inoisy4d-commit.txt)"
+    echo "QuantUI commit: $(cat /opt/course-build/quantui-commit.txt)"
+    if [ "$#" -gt 0 ]; then
+        exec "$@"
+    fi
+
+%test
+    set -eu
+    test -x /opt/inoisy4d/inoisy4d
+    [ -f /opt/hypre/lib/libHYPRE.so ] || [ -f /opt/hypre/lib/libHYPRE.a ]
+    mpirun --version
+    h5pcc.openmpi -showconfig | grep -i "Parallel HDF5"
+    python -c "import quantui, pyscf, h5py, numpy, pandas, matplotlib, seaborn"
+    python -c "from quantui import Molecule, run_in_session; print('QuantUI API OK')"
+    test -f /opt/inoisy4d/tools/inoisy4d_to_visit_emissivity.py
+    echo "Container build-time tests passed."

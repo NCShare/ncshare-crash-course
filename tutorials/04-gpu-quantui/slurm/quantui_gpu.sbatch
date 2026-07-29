@@ -11,22 +11,43 @@
 
 set -euo pipefail
 
+COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
 COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-QUANTUI_SRC="${QUANTUI_SRC:-$HOME/ncshare-software/src/QuantUI}"
-CONDA_ROOT="${CONDA_ROOT:-$HOME/miniforge3}"
 
-source "$CONDA_ROOT/etc/profile.d/conda.sh"
-conda activate ncshare-quantui
+if [[ ! -f "$COURSE_IMAGE" ]]; then
+  echo "Course image not found: $COURSE_IMAGE" >&2
+  exit 2
+fi
 
-export OMP_NUM_THREADS="$SLURM_CPUS_PER_TASK"
-export QUANTUI_COMMIT="$(git -C "$QUANTUI_SRC" rev-parse --short HEAD)"
+mkdir -p "$COURSE_WORK/quantui"
+QUANTUI_COMMIT="$(
+  apptainer exec "$COURSE_IMAGE" \
+    cat /opt/course-build/quantui-commit.txt
+)"
 
 echo "job_id=$SLURM_JOB_ID host=$(hostname)"
+echo "course_image=$COURSE_IMAGE"
 echo "quantui_commit=$QUANTUI_COMMIT"
-nvidia-smi --query-gpu=name,driver_version,memory.total \
-  --format=csv,noheader
 
-cd "$QUANTUI_SRC"
-quantui gpu check
-python "$COURSE_ROOT/tutorials/04-gpu-quantui/run_quantui_gpu.py"
+# --gres allocates the GPU; --nv exposes the host NVIDIA driver and devices
+# inside the container. Both are required, and neither alone proves offload.
+apptainer exec --nv --cleanenv \
+  "$COURSE_IMAGE" \
+  nvidia-smi --query-gpu=name,driver_version,memory.total \
+    --format=csv,noheader
+
+apptainer exec --nv --cleanenv \
+  "$COURSE_IMAGE" \
+  quantui gpu check
+
+apptainer exec --nv --cleanenv \
+  --bind "$COURSE_ROOT:$COURSE_ROOT" \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  --env "COURSE_WORK=$COURSE_WORK" \
+  --env "COURSE_IMAGE=$COURSE_IMAGE" \
+  --env "QUANTUI_COMMIT=$QUANTUI_COMMIT" \
+  --env "SLURM_JOB_ID=$SLURM_JOB_ID" \
+  --env "OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK" \
+  "$COURSE_IMAGE" \
+  python "$COURSE_ROOT/tutorials/04-gpu-quantui/run_quantui_gpu.py"

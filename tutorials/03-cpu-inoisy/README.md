@@ -1,215 +1,213 @@
-# Tutorial: A scientific C/MPI application from clone to queue
+# Tutorial: Run a containerized C/MPI scientific application
 
 **Guided time:** 45 minutes  
 **Application:** [inoisy+ (`inoisy4d`)](https://github.com/alejandroc137/inoisy4d)  
-**Concepts:** modules, a user-installed library, compilation, MPI, Slurm,
-resource requests, logs, HDF5, and reproducibility
+**Concepts:** immutable environments, bind mounts, MPI ranks, Slurm, fixed-size
+comparisons, logs, HDF5, and provenance
 
-## What are we running?
+## What changed from a traditional HPC tutorial?
 
-`inoisy+` generates a four-dimensional Gaussian random field for
-time-dependent astrophysical source models. The science is not the focus here:
-the repository is useful because it is a realistic C/MPI application that
-depends on a compiler, MPI, parallel HDF5, GSL, and HYPRE.
+On a cluster with a large module catalog, each participant might load a
+compiler/MPI/HDF5 stack, install HYPRE, and compile inoisy4d. NCShare instead
+recommends Apptainer for scientific software. The shared course image already
+contains the reviewed build:
 
-We do **not** edit or simplify its source. We install one dependency in user
-space, pass paths to its existing Makefile, and make the runtime problem tiny:
-`16 × 16 × 16 × 16 = 65,536` values (about 0.5 MiB for the raw double-precision
-array). The one-rank and four-rank jobs solve the same global grid. They are not
-expected to be bit-for-bit identical because parallel random-number generation
-and solver ordering may differ.
+```text
+Open MPI + parallel HDF5 + GSL + HYPRE(maxdim=4) + unmodified inoisy4d
+```
+
+The build is still part of the lesson—it is visible in the
+[definition-file tutorial](../../containers/README.md)—but it happens once
+when the image is created, not once per user or job.
+
+`inoisy+` generates a four-dimensional Gaussian random field. The science is
+context rather than the learning objective. We run the same tiny global grid
+with one and four MPI ranks and retain HDF5 results for the visualization lab.
 
 ## Before the clock starts
 
 - Complete [pre-workshop setup](../00-prework.md).
-- The instructor has confirmed the module names and an approved teaching
-  partition.
-- Run commands in an interactive allocation whenever they compile or compute.
-- If the first HYPRE build takes longer than 15 minutes, use the instructor's
-  verified read-only HYPRE prefix and continue; the install script remains the
-  reproducibility record.
+- The HPC team has staged and checksummed the course SIF.
+- The instructor has confirmed the teaching partition.
+- Complete the [Apptainer blueprint tutorial](../../containers/README.md).
 
-## 0-5 min — Clone and inspect
-
-On the login node:
+Set the shared paths:
 
 ```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-export INOISY_SRC="${INOISY_SRC:-$HOME/ncshare-software/src/inoisy4d}"
-export HYPRE_PREFIX="${HYPRE_PREFIX:-$HOME/ncshare-software/hypre-3.1.0-maxdim4}"
-
-mkdir -p "$HOME/ncshare-software/src" "$COURSE_WORK"/{logs,inoisy}
-git clone https://github.com/alejandroc137/inoisy4d.git "$INOISY_SRC"
-cd "$INOISY_SRC"
-git rev-parse --short HEAD
-less README.md
-less Makefile
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+mkdir -p "$COURSE_WORK"/{logs,inoisy}
 ```
 
-If the clone already exists, do not clone over it:
+## 0-8 min — Inspect the application environment
+
+The SIF is read-only. Explore it without installing anything:
 
 ```bash
-git -C "$INOISY_SRC" status --short
-git -C "$INOISY_SRC" pull --ff-only
+apptainer inspect "$COURSE_IMAGE"
+apptainer exec "$COURSE_IMAGE" which inoisy4d
+apptainer exec "$COURSE_IMAGE" mpirun --version
+apptainer exec "$COURSE_IMAGE" h5pcc.openmpi -showconfig \
+  | grep -i "Parallel HDF5"
+apptainer exec "$COURSE_IMAGE" cat /opt/course-build/inoisy4d-commit.txt
 ```
 
-Notice that the existing Makefile uses `h5pcc` and links HYPRE and GSL. We will
-override `HYPRE_DIR` at the command line; no source or Makefile edit is needed.
-
-## 5-18 min — Load modules and install HYPRE
-
-Request a build allocation:
+Inspect the upstream source and Makefile stored in the image:
 
 ```bash
-srun -p workshop --time=00:25:00 --cpus-per-task=4 --mem=8G --pty bash -l
+apptainer exec "$COURSE_IMAGE" \
+  sed -n '1,100p' /opt/inoisy4d/Makefile
+apptainer exec "$COURSE_IMAGE" \
+  sed -n '110,190p' /opt/inoisy4d/README.md
 ```
 
-Inside the allocation:
+Notice the difference between inspecting a build and modifying it. To change a
+dependency or source commit, edit the definition and build a **new** SIF; do
+not patch the shared image during a job.
+
+## 8-15 min — Connect host data to container software
+
+Apptainer automatically exposes some host paths, but the jobs bind the active
+course workspace explicitly:
 
 ```bash
-export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export HYPRE_PREFIX="${HYPRE_PREFIX:-$HOME/ncshare-software/hypre-3.1.0-maxdim4}"
-
-module purge
-module load compilers/gcc/12.3.0
-module load mpi/openmpi/4.1.6
-module load libs/hdf5/1.14.6
-module load libs/gsl/2.7.1
-module list
-
-mpicc --version
-h5pcc -showconfig | grep -i "Parallel HDF5"
-bash "$COURSE_ROOT/tutorials/03-cpu-inoisy/scripts/setup_hypre.sh"
+apptainer exec \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  ls -ld "$COURSE_WORK"
 ```
 
-Why this matters:
+The same pathname is used on both sides of the bind. The executable and
+libraries come from the image; inputs and outputs remain in `/work/$USER`.
+Deleting the image would not delete the results.
 
-- Modules select a mutually compatible compiler/MPI/library stack.
-- HYPRE is not assumed to be centrally installed, so it goes under
-  `/hpc/home/$USER`, where it persists.
-- `--enable-maxdim=4` is essential because `inoisy+` uses a four-dimensional
-  HYPRE SStruct grid.
-- The script pins HYPRE `v3.1.0` and prints the exact configuration.
+## 15-22 min — Compare the Slurm files
 
-## 18-23 min — Compile the unmodified application
-
-Still inside the build allocation:
-
-```bash
-bash "$COURSE_ROOT/tutorials/03-cpu-inoisy/scripts/build_inoisy.sh"
-"$INOISY_SRC/inoisy4d" --help | head -n 25
-exit
-```
-
-The helper runs the repository's existing Makefile with:
-
-```bash
-make HYPRE_DIR="$HYPRE_PREFIX" CC=h5pcc
-```
-
-Object files and the executable are normal build products; no `.c`, `.h`, or
-Makefile source is changed.
-
-## 23-30 min — Read the Slurm files
-
-Compare:
+Open:
 
 - [`inoisy_one_rank.sbatch`](slurm/inoisy_one_rank.sbatch)
 - [`inoisy_four_ranks.sbatch`](slurm/inoisy_four_ranks.sbatch)
 
-Both request one node, modest memory, and ten minutes. The global grid is held
-fixed:
+Both jobs:
+
+- request one node, modest memory, and ten minutes;
+- identify the SIF with `apptainer inspect`;
+- bind the host work directory;
+- start the MPI launcher **inside** the image, following NCShare's documented
+  single-node container pattern; and
+- call the same unmodified executable.
+
+The global grid is fixed:
 
 | Job | MPI ranks | Local time cells per rank | Processor grid | Global shape |
 |---|---:|---:|---|---|
 | One rank | 1 | 16 | `1 1 1 1` | `(16,16,16,16)` |
 | Four ranks | 4 | 4 | `1 1 1 4` | `(16,16,16,16)` |
 
-This is a simple strong-scaling comparison: more ranks, same total problem.
-For such a tiny grid, the parallel job may be slower because startup and
-communication dominate. That is a useful result, not a failure.
+This is a small strong-scaling comparison. Four ranks may be slower because
+container startup, MPI startup, and communication dominate such a tiny problem.
+That is a useful measurement, not a reason to request more CPUs.
 
-## 30-35 min — Submit
+## 22-28 min — Submit
 
-Create the log directory **before** `sbatch` because Slurm opens the output file
-before the job body begins:
+Slurm opens the log before the job body starts, so create the directory first:
 
 ```bash
-export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 mkdir -p "$COURSE_WORK/logs"
-
 cd "$COURSE_ROOT/tutorials/03-cpu-inoisy"
-sbatch slurm/inoisy_one_rank.sbatch
-sbatch slurm/inoisy_four_ranks.sbatch
+sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/inoisy_one_rank.sbatch
+sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/inoisy_four_ranks.sbatch
 ```
 
-Each `sbatch` command prints a job ID. Record both.
+Record both job IDs.
 
-## 35-40 min — Monitor and inspect
+## 28-35 min — Monitor and diagnose
 
 ```bash
 squeue -u "$USER"
+squeue -j JOB_ID -o "%.18i %.9T %.10M %.6D %.30R"
 scontrol show job JOB_ID
 ```
 
-When a job finishes:
+After completion:
 
 ```bash
 sacct -j JOB_ID --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode
 less "$COURSE_WORK/logs/inoisy-one-JOB_ID.out"
 less "$COURSE_WORK/logs/inoisy-four-JOB_ID.out"
-find "$COURSE_WORK/inoisy" -maxdepth 2 -name '*.h5' -ls
 ```
 
-Expected success signals:
+Separate three failure layers:
 
-- final job state `COMPLETED`;
-- exit code `0:0`;
-- solver-stage and timing messages in the log; and
-- one `.h5` file in each output directory.
+1. **Slurm:** pending reason, allocation, wall time, memory, exit code.
+2. **Apptainer:** image path, bind path, permissions, image integrity.
+3. **Application:** MPI/process-grid agreement, parameters, HDF5 output.
 
-## 40-45 min — Verify the scientific output
+Rebuilding the image is not the first response to a bad resource request or a
+missing host output directory.
 
-Activate the visualization environment if it already exists, or save this check
-for Session 4:
+## 35-42 min — Verify the HDF5 results
 
 ```bash
-conda activate ncshare-viz
-python "$COURSE_ROOT/tutorials/03-cpu-inoisy/scripts/inspect_inoisy_output.py" \
-  "$COURSE_WORK"/inoisy/one-rank/*.h5 \
-  "$COURSE_WORK"/inoisy/four-ranks/*.h5
+find "$COURSE_WORK/inoisy" -maxdepth 2 -name '*.h5' -ls
+
+apptainer exec \
+  --bind "$COURSE_ROOT:$COURSE_ROOT" \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  python "$COURSE_ROOT/tutorials/03-cpu-inoisy/scripts/inspect_inoisy_output.py" \
+    "$COURSE_WORK"/inoisy/one-rank/*.h5 \
+    "$COURSE_WORK"/inoisy/four-ranks/*.h5
 ```
 
 Confirm that both files contain `/data/data_raw` with shape
-`(16, 16, 16, 16)`. The script reads metadata and one slice at a time; it does
-not load a production-size 4D field into memory.
+`(16, 16, 16, 16)`. The inspection script reads metadata and one slice rather
+than loading a production-scale four-dimensional array.
+
+## 42-45 min — Record provenance
+
+```bash
+apptainer inspect "$COURSE_IMAGE" \
+  | grep -E 'BaseImage|HYPREVersion|inoisy4dCommit|BlueprintVersion'
+cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
+```
+
+Record the image path/checksum, definition version, job IDs, Slurm resources,
+command-line parameters, and output paths. The source commit alone is
+insufficient: it does not identify the MPI, HDF5, HYPRE, compiler, or Python
+stack used to produce the result.
 
 ## Diagnose before resubmitting
 
 | Symptom | Check | Likely action |
 |---|---|---|
-| `Invalid account or partition` | `sinfo`, instructor directions | use the approved teaching partition |
-| `h5pcc: command not found` | `module list` | load the verified HDF5 module |
-| HDF5 says parallel support is `no` | `h5pcc -showconfig` | load the parallel HDF5/MPI stack |
-| `libHYPRE.so` not found | `echo "$LD_LIBRARY_PATH"` | export `$HYPRE_PREFIX/lib` as in the Slurm files |
-| job stays `PENDING` | `squeue -j JOB_ID -o "%.18i %.9T %.30R"` | read the reason; do not inflate resources |
-| no log file | log directory and `#SBATCH --output` | create the directory before submission |
-| nonzero exit | log plus `sacct ... ExitCode` | fix the first error, then resubmit |
+| image not found | `ls -l "$COURSE_IMAGE"` | use the instructor-published path |
+| bind error | host directory exists | create it before `apptainer exec` |
+| process-grid error | task count and `-pgrid` product | make them agree |
+| job pending | `squeue ... %R` | read the scheduler reason |
+| no log | log directory and `#SBATCH --output` | create the directory first |
+| no HDF5 | application log and output bind | fix the first application error |
+| multi-node launch fails | MPI compatibility model | return to one node; consult admins |
 
 ## Takeaways
 
-1. A real application is a chain of compatible software choices, not just a
-   source file.
-2. The Slurm file is part of the experiment and should be version controlled.
-3. Start with a tiny fixed problem, prove the workflow, then scale deliberately.
-4. Record versions, job IDs, resource requests, and output paths for
-   reproducibility.
+1. The definition file documents how the executable was created; the SIF is
+   what the job actually runs.
+2. A container packages software, while Slurm allocates resources.
+3. Bind mounts keep mutable data outside the immutable image.
+4. Start with a tiny fixed problem, prove the workflow, then scale.
+
+## Bonus
+
+See [the module-based cluster workflow](../../bonus/module-based-cluster/README.md)
+for the earlier per-user HYPRE build and native MPI/conda approach.
 
 ## Sources
 
-- [inoisy+ repository and build/run documentation](https://github.com/alejandroc137/inoisy4d)
-- [NCShare Cluster Computing guide](https://userguide.ncshare.org/guides/slurm/)
+- [inoisy+ repository](https://github.com/alejandroc137/inoisy4d)
 - [NCShare Cluster Software guide](https://userguide.ncshare.org/guides/slurm/software/)
-- [HYPRE releases](https://github.com/hypre-space/hypre/releases)
+- [NCShare FHI-aims MPI container example](https://userguide.ncshare.org/examples/apptainer-fhiaims/)
+- [Apptainer MPI guidance](https://apptainer.org/docs/user/latest/mpi.html)

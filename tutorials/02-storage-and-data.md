@@ -17,7 +17,9 @@ For each item, choose a location before revealing the suggested answer:
 
 | Item | Suggested location | Why |
 |---|---|---|
-| Git repositories and conda environments | `/hpc/home/$USER` | small, persistent user setup |
+| Course repository and small user configuration | `/hpc/home/$USER` | small, persistent user setup |
+| Shared course SIF | `/opt/apps/containers/user` | one HPC-team-staged image for all nodes |
+| Temporary image-build cache | `/work/$USER/...` | large, replaceable build data |
 | Input copied in for this analysis | `/work/$USER/.../inputs` | active data |
 | Large intermediate arrays | job-local `/scratch` | fast temporary I/O |
 | Result needed after the job | `/work/$USER/.../outputs`, then transfer out | survives job, but not archival |

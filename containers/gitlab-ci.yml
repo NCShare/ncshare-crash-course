@@ -1,0 +1,21 @@
+image:
+  name: almalinux:9.6-minimal
+  entrypoint: ["/bin/sh", "-c"]
+
+default:
+  tags:
+    - NCShare
+
+stages:
+  - build
+
+build:
+  stage: build
+  script:
+    - microdnf install -y epel-release
+    - microdnf install -y apptainer apptainer-suid
+    - apptainer build --disable-cache ncshare-science-course.sif containers/ncshare-science-course.def
+    - apptainer test ncshare-science-course.sif
+    - sha256sum ncshare-science-course.sif > ncshare-science-course.sif.sha256
+    - cp ncshare-science-course.sif /containers/
+    - cp ncshare-science-course.sif.sha256 /containers/

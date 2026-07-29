@@ -1,138 +1,151 @@
-# Tutorial: A Python environment and GPU job with QuantUI
+# Tutorial: Run a containerized Python application on a GPU
 
 **Guided time:** 45 minutes  
 **Application:** [The-Schultz-Lab/QuantUI](https://github.com/The-Schultz-Lab/QuantUI)  
-**Concepts:** conda environments, Python packaging, CUDA-specific wheels, GPU
-resource requests, GPU verification, Slurm logs, and responsible GPU use
+**Concepts:** Python environment design, container provenance, CUDA user-space
+libraries, GPU allocation, `--nv`, application-level offload evidence, and
+responsible GPU use
 
-## What is different from the CPU tutorial?
+## What is different from the CPU/MPI tutorial?
 
-The inoisy+ lab built a C/MPI application and a user-installed compiled
-library. This lab uses a Python/conda software stack and requests one NVIDIA
-H200 GPU. QuantUI places PySCF quantum-chemistry calculations behind a Jupyter
-interface and can offload supported self-consistent-field calculations through
-`gpu4pyscf`.
+The inoisy+ lab used compiled C/MPI software from the course image. This lab
+uses the **same SIF**, but follows its Python/GPU path:
 
-We use a tiny water calculation. The chemistry is only context; the learning
-goal is to prove that the environment, CUDA runtime, scheduler request, and
-application all agree about the GPU.
+```text
+Python 3.11 + QuantUI + PySCF/gpu4pyscf + CUDA 12.x wheels
+```
+
+The Python environment is created in the definition file when the image is
+built. Students inspect that environment rather than creating slightly
+different conda environments in every home directory. At runtime, Slurm grants
+one H200 and Apptainer's `--nv` flag exposes the host NVIDIA driver/devices to
+the image.
+
+We use a tiny water RHF/STO-3G calculation. The chemistry is context; the goal
+is to prove that scheduler request, host driver, container environment, and
+QuantUI all agree about GPU use.
 
 ## Before the clock starts
 
-- Complete [pre-workshop setup](../00-prework.md), including Miniforge.
+- Complete [pre-workshop setup](../00-prework.md).
 - Obtain GPU access through your institutional representative.
-- The instructor has verified current NCShare CUDA compatibility and package
-  availability.
-- Create `/work/$USER/ncshare-crash-course/logs` before submission.
-
-## 0-5 min — Clone and inspect
-
-On the login node:
+- Complete the [Apptainer blueprint tutorial](../../containers/README.md).
+- The HPC team has tested the SIF on an NCShare H200.
 
 ```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export QUANTUI_SRC="${QUANTUI_SRC:-$HOME/ncshare-software/src/QuantUI}"
 export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-
-mkdir -p "$HOME/ncshare-software/src" "$COURSE_WORK"/{logs,quantui}
-git clone https://github.com/The-Schultz-Lab/QuantUI.git "$QUANTUI_SRC"
-git -C "$QUANTUI_SRC" rev-parse --short HEAD
-less "$QUANTUI_SRC/README.md"
-less "$QUANTUI_SRC/pyproject.toml"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+mkdir -p "$COURSE_WORK"/{logs,quantui}
 ```
 
-If the clone exists, use `git -C "$QUANTUI_SRC" pull --ff-only` rather than
-cloning over it.
-
-Find the GPU extras in `pyproject.toml`. QuantUI warns against installing bare
-`gpu4pyscf` or `cupy` source packages; CUDA-suffixed wheels avoid an unnecessary
-local CUDA-toolkit build.
-
-## 5-20 min — Create the environment on CPUs
-
-Do not occupy a GPU while downloading packages. Request a short CPU allocation:
+## 0-8 min — Inspect the Python environment
 
 ```bash
-srun -p workshop --time=00:25:00 --cpus-per-task=4 --mem=12G --pty bash -l
+apptainer exec "$COURSE_IMAGE" python --version
+apptainer exec "$COURSE_IMAGE" python -c \
+  "import quantui, pyscf; print('QuantUI:', quantui.__file__); print('PySCF:', pyscf.__version__)"
+apptainer exec "$COURSE_IMAGE" \
+  cat /opt/course-build/quantui-commit.txt
+apptainer exec "$COURSE_IMAGE" \
+  sed -n '1,80p' /opt/course-build/conda-explicit.txt
+apptainer exec "$COURSE_IMAGE" \
+  grep -E 'gpu4pyscf|cupy|cutensor' /opt/course-build/pip-freeze.txt
 ```
 
-Inside the allocation:
+Then locate the environment-creation block in
+[`ncshare-science-course.def`](../../containers/ncshare-science-course.def).
+Discuss why it:
+
+- fixes Python at 3.11;
+- separates conda-resolved scientific packages from CUDA-specific pip wheels;
+- installs CUDA-suffixed wheels instead of accidentally building bare CuPy or
+  gpu4pyscf source packages; and
+- records both the requested recipe and resolved package manifests.
+
+## 8-15 min — Separate allocation from exposure
+
+Two different mechanisms are required:
+
+```bash
+# Slurm: reserve one physical H200
+#SBATCH --gres=gpu:h200:1
+
+# Apptainer: expose the host NVIDIA driver/devices to the image
+apptainer exec --nv IMAGE.sif COMMAND
+```
+
+Neither mechanism proves that QuantUI used the GPU. `nvidia-smi` proves a
+device is visible; `quantui gpu check` proves the environment supports offload;
+the calculation result's `gpu_used` field proves this supported calculation
+actually followed QuantUI's offload path.
+
+## 15-22 min — Verify interactively
+
+Request one short GPU allocation:
+
+```bash
+srun -p interactive-gpu \
+  --gres=gpu:h200:1 \
+  --time=00:10:00 \
+  --cpus-per-task=4 \
+  --mem=16G \
+  --pty bash -l
+```
+
+Inside it:
 
 ```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export QUANTUI_SRC="${QUANTUI_SRC:-$HOME/ncshare-software/src/QuantUI}"
-export CONDA_ROOT="${CONDA_ROOT:-$HOME/miniforge3}"
-
-source "$CONDA_ROOT/etc/profile.d/conda.sh"
-bash "$COURSE_ROOT/tutorials/04-gpu-quantui/scripts/install_quantui.sh"
-conda activate ncshare-quantui
-
-python --version
-python -c "import quantui, pyscf; print('QuantUI:', quantui.__file__); print('PySCF:', pyscf.__version__)"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+bash "$COURSE_ROOT/containers/verify_container.sh" \
+  "$COURSE_IMAGE" gpu
 exit
 ```
 
-The environment lives in `$HOME`, not `/work`, so it is not subject to the
-75-day work-space purge. The installer:
+The CPU verification path does not use `--nv`; the GPU path does. This lets one
+image serve both workflows without reserving a GPU for CPU-only work.
 
-1. creates/updates a Python 3.11 conda environment;
-2. installs the cloned QuantUI package with its PySCF, ASE, and app extras; and
-3. installs the CUDA 12.x `gpu4pyscf`, CuPy, and cuTENSOR wheels appropriate to
-   the NCShare H200 driver documented for this course.
+## 22-28 min — Read the batch job
 
-## 20-27 min — Read the GPU request
+Open [`quantui_gpu.sbatch`](slurm/quantui_gpu.sbatch). Connect each layer to
+its responsibility:
 
-Open [`quantui_gpu.sbatch`](slurm/quantui_gpu.sbatch).
+| Layer | Evidence in the job |
+|---|---|
+| Scheduler | GPU partition, `--gres`, CPUs, memory, wall time |
+| Container | SIF path, `--nv`, bind mounts, clean runtime environment |
+| Application | `quantui gpu check`, water calculation, `gpu_used` assertion |
+| Reproducibility | image labels, QuantUI commit, JSON result, Slurm log |
 
-The essential requests are:
+The job requests one GPU because this example uses one. More GPUs would not
+make this script multi-GPU.
 
-```bash
-#SBATCH --partition=interactive-gpu
-#SBATCH --gres=gpu:h200:1
-#SBATCH --cpus-per-task=4
-#SBATCH --mem=16G
-#SBATCH --time=00:10:00
-```
-
-Connect each line to a need in the application. We request one GPU because the
-example uses only one. More GPUs would not make this script multi-GPU.
-
-The job runs three checks:
-
-1. `nvidia-smi` verifies the scheduled node exposes an H200;
-2. `quantui gpu check` verifies the Python environment can see GPU offload; and
-3. `run_quantui_gpu.py` verifies the actual QuantUI result reports
-   `gpu_used: true`.
-
-## 27-32 min — Submit
+## 28-33 min — Submit
 
 ```bash
-export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-mkdir -p "$COURSE_WORK/logs"
-
 cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
-sbatch slurm/quantui_gpu.sbatch
+sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/quantui_gpu.sbatch
 ```
 
 Record the job ID.
 
-## 32-40 min — Monitor and verify
+## 33-40 min — Monitor and verify
 
 ```bash
-squeue -u "$USER"
 squeue -j JOB_ID -o "%.18i %.9T %.10M %.6D %.30R"
-```
-
-After completion:
-
-```bash
 sacct -j JOB_ID --format=JobID,State,Elapsed,AllocCPUS,ReqMem,ExitCode
 less "$COURSE_WORK/logs/quantui-gpu-JOB_ID.out"
-python -m json.tool "$COURSE_WORK/quantui/quantui_gpu_result.json"
+
+apptainer exec \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  python -m json.tool \
+  "$COURSE_WORK/quantui/quantui_gpu_result.json"
 ```
 
-Expected result fields include:
+Expected fields include:
 
 ```json
 {
@@ -143,53 +156,56 @@ Expected result fields include:
 }
 ```
 
-The elapsed time is not a meaningful GPU speed benchmark: this molecule is
-intentionally small, so setup and transfer overhead dominate. The defensible
-claim is only that the supported calculation ran through QuantUI's GPU-offload
-path.
+This molecule is too small for a meaningful speed benchmark. The defensible
+claim is that the calculation used QuantUI's supported GPU-offload path—not
+that it was faster than a CPU calculation.
 
-## 40-45 min — Explain the resource choice
+## 40-45 min — Explain and improve the design
 
 With a partner, answer:
 
-1. Which line in the Slurm file actually allocates a GPU?
-2. Why does `torch.cuda.is_available()` or `nvidia-smi` alone not prove that
-   QuantUI used the GPU?
-3. Why should environment installation happen on a CPU node?
-4. What would you change for a longer preemptible `gpu` job?
+1. Which line allocates a GPU, and which option exposes it in the SIF?
+2. Why does `nvidia-smi` alone not prove application offload?
+3. Why is the image built once on CPUs instead of being rebuilt inside a GPU
+   job?
+4. What evidence would you retain with a published result?
+5. When must the definition/SIF be rebuilt rather than merely resubmitting?
 
-For longer work on NCShare's general `gpu` partition, checkpoint intermediate
-state because jobs may be preempted. Do not place CPU-only work in a GPU
-partition.
+For longer jobs on a preemptible GPU partition, checkpoint application state.
+Do not run CPU-only installation, visualization, or data preparation on a GPU.
 
-## Optional: open the QuantUI interface
+## Optional: use the image in Open OnDemand
 
-In an Open OnDemand JupyterLab session configured for one GPU:
+NCShare's JupyterLab Apptainer launcher accepts a custom SIF. Select the course
+image, request one H200 only when GPU computation is needed, launch JupyterLab,
+and open QuantUI's notebook:
 
-```bash
-source "$HOME/miniforge3/etc/profile.d/conda.sh"
-conda activate ncshare-quantui
-cd "$QUANTUI_SRC"
-jupyter lab notebooks/molecule_computations.ipynb
+```text
+/opt/QuantUI/notebooks/molecule_computations.ipynb
 ```
 
-In the notebook, the Status view should identify GPU offload as active. Use
-small molecules and `STO-3G` during the workshop.
+For the scientific-visualization session, select the same image on a CPU
+partition and open the course notebook from the bound course repository.
 
-## Diagnose before reinstalling
+## Diagnose before rebuilding
 
 | Symptom | Check | Likely action |
 |---|---|---|
-| `conda` not found | `$CONDA_ROOT`, pre-work | source the correct `conda.sh` |
-| package download fails | log, instructor mirror | use the staged cache; do not loop downloads |
-| job pending with `QOS...` or access reason | `squeue ... %R` | contact the instructor/admin |
-| `nvidia-smi` has no device | Slurm partition and `--gres` | do not run outside a GPU allocation |
-| CuPy import error | installed CUDA suffix | use the verified CUDA 12.x wheels |
-| `gpu_used` is false | `quantui gpu check`, `QUANTUI_DISABLE_GPU` | fix the environment; do not claim acceleration |
-| preempted job | `sacct` state/log | resubmit this short lab; checkpoint real workloads |
+| image not found | published path | correct `COURSE_IMAGE` |
+| no GPU visible | Slurm partition/`--gres` and `--nv` | fix allocation/exposure |
+| `gpu4pyscf` import fails | recorded pip manifest and image checksum | use verified SIF |
+| `gpu_used` is false | `quantui gpu check` and method support | fix environment/method |
+| job pending | `squeue ... %R` | read scheduler reason |
+| CPU-only work on GPU | command and utilization | move it to a CPU allocation |
+
+## Bonus
+
+See [the module-based cluster workflow](../../bonus/module-based-cluster/README.md)
+for a per-user conda environment and direct host GPU runtime.
 
 ## Sources
 
-- [QuantUI README and GPU installation guidance](https://github.com/The-Schultz-Lab/QuantUI)
-- [NCShare GPU Guide](https://userguide.ncshare.org/guides/gpu/)
+- [QuantUI repository and GPU guidance](https://github.com/The-Schultz-Lab/QuantUI)
+- [NCShare GPU guide](https://userguide.ncshare.org/guides/gpu/)
 - [NCShare Cluster Software guide](https://userguide.ncshare.org/guides/slurm/software/)
+- [Apptainer GPU support](https://apptainer.org/docs/user/latest/gpu.html)

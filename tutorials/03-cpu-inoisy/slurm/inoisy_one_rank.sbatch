@@ -10,25 +10,27 @@
 
 set -euo pipefail
 
-module purge
-module load compilers/gcc/12.3.0
-module load libs/gsl/2.7.1
-module load mpi/openmpi/4.1.6
-module load libs/hdf5/1.14.6
-
-INOISY_SRC="${INOISY_SRC:-$HOME/ncshare-software/src/inoisy4d}"
-HYPRE_PREFIX="${HYPRE_PREFIX:-$HOME/ncshare-software/hypre-3.1.0-maxdim4}"
+COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
 COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 OUTDIR="$COURSE_WORK/inoisy/one-rank"
 
-export LD_LIBRARY_PATH="$HYPRE_PREFIX/lib:${LD_LIBRARY_PATH:-}"
+if [[ ! -f "$COURSE_IMAGE" ]]; then
+  echo "Course image not found: $COURSE_IMAGE" >&2
+  exit 2
+fi
+
 mkdir -p "$OUTDIR"
-cd "$INOISY_SRC"
 
 echo "job_id=$SLURM_JOB_ID host=$(hostname) ranks=$SLURM_NTASKS"
-echo "inoisy_commit=$(git rev-parse --short HEAD)"
+echo "course_image=$COURSE_IMAGE"
+apptainer inspect "$COURSE_IMAGE" \
+  | grep -E 'BaseImage|HYPREVersion|inoisy4dCommit|BlueprintVersion' || true
 
-srun --ntasks=1 ./inoisy4d \
+# NCShare's documented single-node pattern runs mpirun inside the image.
+apptainer exec --cleanenv \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  mpirun -n 1 inoisy4d \
   -nl 16 -nj 16 -ni 16 -nk 16 \
   -pgrid 1 1 1 1 \
   -solver 0 \

@@ -28,9 +28,9 @@ def code(text: str):
 def main() -> None:
     nb = nbf.v4.new_notebook()
     nb.metadata.kernelspec = {
-        "display_name": "Python (NCShare Visualization)",
+        "display_name": "Python 3 (NCShare course container)",
         "language": "python",
-        "name": "ncshare-viz",
+        "name": "python3",
     }
     nb.metadata.language_info = {"name": "python", "version": "3.11"}
     nb.cells = [
@@ -44,6 +44,10 @@ This lab treats the inoisy+ result as a scientific data product: a four-dimensio
 Gaussian random field (GRF) stored as `[time, x, y, z]`. We will inspect it lazily,
 make diagnostic plots, run the unmodified upstream emissivity converter, and export
 a figure whose scales and provenance are explicit.
+
+Run this notebook with the shared NCShare science-course Apptainer image. The same
+immutable SIF supplies the simulation executable, post-processor, Python interpreter,
+and plotting libraries; data and exported figures remain in bound host storage.
 
 The astrophysics is context, not a prerequisite. The computing habits transfer to
 many simulations, images, volumes, and time series.

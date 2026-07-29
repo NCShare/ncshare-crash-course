@@ -1,118 +1,129 @@
-# Hands-on: Scientific visualization and post-processing
+# Hands-on: Scientific visualization and containerized post-processing
 
 **Guided time:** 60 minutes  
-**Inputs:** inoisy+ HDF5 output; a small fallback file is included  
-**Tools:** JupyterLab, NumPy, h5py, Matplotlib, pandas, and the unmodified
-inoisy+ emissivity converter
+**Inputs:** containerized inoisy+ HDF5 output; a small fallback is included  
+**Tools inside the course SIF:** JupyterLab, NumPy, h5py, Matplotlib, pandas,
+Seaborn, and the unmodified inoisy+ emissivity converter
 
 ## Learning goals
 
 By the end, you can:
 
+- launch a reproducible Jupyter environment from the same SIF as the simulation;
 - inspect HDF5 structure and metadata without loading a full 4D field;
 - choose a slice or reduction that answers a specific question;
-- match sequential, diverging, cyclic, and qualitative color encodings to data;
+- match sequential, diverging, cyclic, and qualitative colors to data meaning;
 - label quantities, units, normalization, and provenance;
-- avoid misleading limits and disclose percentile/log normalization;
-- run the upstream GRF-to-emissivity post-processing code; and
-- export a reproducible raster and vector figure.
+- run the upstream GRF-to-emissivity post-processor through Apptainer; and
+- export reproducible raster and vector figures.
 
-The Gaussian random field models time-variable structure; the emissivity
-converter standardizes that field and maps it to a positive lognormal
-disk-plus-jet source. The notebook explains only the minimum scientific context
-needed to understand the arrays.
+The Gaussian random field models time-variable structure; the converter
+standardizes that field and maps it to a positive lognormal disk-plus-jet
+emissivity. Only the minimum scientific context needed to understand the arrays
+is included.
 
-## 1. Create the visualization environment
-
-Use a CPU allocation:
-
-```bash
-srun -p workshop --time=00:20:00 --cpus-per-task=2 --mem=8G --pty bash -l
-```
-
-Inside it:
-
-```bash
-export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-source "$HOME/miniforge3/etc/profile.d/conda.sh"
-
-conda env create \
-  -f "$COURSE_ROOT/tutorials/05-visualization-postprocessing/environment.yml"
-conda activate ncshare-viz
-python -m ipykernel install --user \
-  --name ncshare-viz \
-  --display-name "Python (NCShare Visualization)"
-exit
-```
-
-If the environment already exists:
-
-```bash
-conda env update \
-  --name ncshare-viz \
-  --file "$COURSE_ROOT/tutorials/05-visualization-postprocessing/environment.yml" \
-  --prune
-```
-
-## 2. Run the upstream post-processor
-
-The notebook can run it interactively, but a batch job is the reproducible
-cluster pattern:
+## 1. Use the course image—do not create another environment
 
 ```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-mkdir -p "$COURSE_WORK/logs"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
 
-cd "$COURSE_ROOT/tutorials/05-visualization-postprocessing"
-sbatch slurm/postprocess_emissivity.sbatch
+apptainer exec "$COURSE_IMAGE" python -c \
+  "import h5py, matplotlib, numpy, pandas, seaborn; print('visualization stack OK')"
 ```
 
-The job calls this file from the cloned inoisy+ repository without altering it:
+The plotting stack is created in the same definition file as MPI, HYPRE,
+inoisy4d, and QuantUI. This avoids a hidden post-processing environment that
+cannot be reconstructed later.
+
+For a module-based cluster, see the
+[bonus native environment](../../bonus/module-based-cluster/README.md).
+
+## 2. Run the upstream post-processor
+
+The notebook can run it interactively, but a batch job records a clearer
+cluster workflow:
+
+```bash
+mkdir -p "$COURSE_WORK/logs"
+cd "$COURSE_ROOT/tutorials/05-visualization-postprocessing"
+sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/postprocess_emissivity.sbatch
+```
+
+The job binds `/work/$USER` and calls the unmodified converter stored inside
+the SIF:
 
 ```text
-tools/inoisy4d_to_visit_emissivity.py
+/opt/inoisy4d/tools/inoisy4d_to_visit_emissivity.py
 ```
 
 It reads `/data/data_raw`, standardizes the GRF, computes disk and jet
-components, and writes a visualization-oriented HDF5/XDMF pair under
+components, and writes an HDF5/XDMF pair under
 `$COURSE_WORK/inoisy/postprocessed`.
 
-## 3. Open the notebook
+## 3. Open the notebook through Open OnDemand
 
-Launch an Open OnDemand JupyterLab CPU session with 2 CPUs, 8 GB RAM, and one
-hour. Select the **Python (NCShare Visualization)** kernel, then open:
+NCShare Open OnDemand can launch JupyterLab from a selected Apptainer image:
 
-```text
-tutorials/05-visualization-postprocessing/scientific_visualization.ipynb
+1. Open **Interactive Apps → Jupyter Lab Apptainer**.
+2. Request 2 CPU threads, 8 GB RAM, and one hour.
+3. Select the course SIF under **Apptainer Container File**.
+4. Do **not** request a GPU; these plots and the post-processor are CPU work.
+5. Launch, open the course repository, and select the image's Python 3 kernel.
+6. Open:
+
+   ```text
+   tutorials/05-visualization-postprocessing/scientific_visualization.ipynb
+   ```
+
+For command-line testing inside a CPU allocation:
+
+```bash
+apptainer exec \
+  --bind "$COURSE_ROOT:$COURSE_ROOT" \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  jupyter lab --no-browser
 ```
 
-The notebook searches in this order:
+The notebook searches for input in this order:
 
-1. `INOISY_H5`, if you set it;
-2. your newest four-rank output in
+1. `INOISY_H5`, if set;
+2. the newest four-rank result under
    `/work/$USER/ncshare-crash-course/inoisy/four-ranks`; and
-3. the included tiny synthetic fallback file.
+3. the included tiny synthetic fallback.
 
 The fallback matches the inoisy+ HDF5 schema but is not a solver result. It
 exists so queue delays do not stop the visualization lesson.
 
-## A compact figure checklist
+## Container-specific reproducibility check
 
-Before saving a scientific figure, check:
+Before exporting the final figure, record:
+
+```bash
+apptainer inspect "$COURSE_IMAGE" \
+  | grep -E 'BaseImage|inoisy4dCommit|QuantUICommit|BlueprintVersion'
+cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
+```
+
+Keep that identity with the input HDF5 path, time/slice selection, percentile
+limits, plotting code, and exported figure.
+
+## A compact figure checklist
 
 - **Question:** Does the figure answer one stated question?
 - **Encoding:** Is the visual form appropriate for the quantity?
-- **Scale:** Are limits, logarithms, percentiles, and normalization explicit?
+- **Scale:** Are logarithms, percentiles, limits, and normalization explicit?
 - **Color:** Is the map perceptually ordered and suitable for the data type?
 - **Labels:** Are quantity names and units on axes and color bars?
 - **Context:** Is the selected time, slice, or aggregation stated?
-- **Accessibility:** Does meaning survive grayscale/color-vision variation, and
-  is color paired with labels or line styles?
+- **Accessibility:** Does meaning survive grayscale/color-vision variation?
 - **Integrity:** Are missing values visible, and was no inconvenient data
   silently removed?
-- **Reproducibility:** Can the plot be regenerated from code, inputs, and saved
-  settings?
+- **Reproducibility:** Can the plot be regenerated from the SIF, input, and
+  notebook?
 - **Export:** Is PNG used for slides/web and PDF/SVG for scalable line art?
 
 ## Recommended references
@@ -124,3 +135,4 @@ Before saving a scientific figure, check:
 - [Fundamentals of Data Visualization](https://clauswilke.com/dataviz/)
 - [Data-to-Viz caveats](https://www.data-to-viz.com/caveats.html)
 - [Ten Simple Rules for Better Figures](https://doi.org/10.1371/journal.pcbi.1003833)
+- [NCShare Open OnDemand JupyterLab guide](https://userguide.ncshare.org/guides/ondemand/jupyter/)

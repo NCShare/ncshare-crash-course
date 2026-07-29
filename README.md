@@ -4,8 +4,8 @@ An upload-ready, one-day, hands-on introduction to NCShare for undergraduate
 students and other new HPC users. The exercises use the official
 [NCShare user guides](https://userguide.ncshare.org/guides/) and
 [NCShare examples](https://github.com/NCShare/examples), then move through
-the unmodified `inoisy4d` C/MPI application, a GPU-enabled QuantUI calculation,
-and scientific visualization/post-processing.
+a reproducible Apptainer build, the unmodified `inoisy4d` C/MPI application,
+a GPU-enabled QuantUI calculation, and scientific visualization/post-processing.
 
 ## Start here
 
@@ -17,20 +17,24 @@ and scientific visualization/post-processing.
 
 | Material | Purpose | Guided time |
 |---|---|---:|
-| [Access and orientation](tutorials/01-access-and-orientation.md) | Login, cluster mental model, essential commands, modules, first allocation | 75 min plus break |
+| [Access and orientation](tutorials/01-access-and-orientation.md) | Login, cluster mental model, essential commands, Apptainer, first allocation | 75 min plus break |
 | [Storage and data movement](tutorials/02-storage-and-data.md) | `/hpc/home`, `/work`, `/scratch`, `scp`, `rsync`, and I/O habits | 30 min |
-| [inoisy+ on CPUs](tutorials/03-cpu-inoisy/README.md) | Install HYPRE, compile unmodified C/MPI source, and submit the same application with one/four ranks | 45 min guided path |
-| [QuantUI on a GPU](tutorials/04-gpu-quantui/README.md) | Create a conda environment, verify an H200 allocation, submit a GPU calculation | 45 min |
-| [Visualization and post-processing](tutorials/05-visualization-postprocessing/README.md) | Inspect HDF5 safely, run the upstream emissivity converter, make publication-ready plots | 60 min |
+| [Apptainer blueprint](containers/README.md) | Read, build, test, checksum, and critique one shared scientific-software image | 30 min |
+| [inoisy+ on CPUs](tutorials/03-cpu-inoisy/README.md) | Run the same containerized C/MPI application with one/four ranks | 45 min |
+| [QuantUI on a GPU](tutorials/04-gpu-quantui/README.md) | Inspect the image's Python environment, expose an H200, and verify GPU offload | 45 min |
+| [Visualization and post-processing](tutorials/05-visualization-postprocessing/README.md) | Reuse the SIF in Jupyter, inspect HDF5, run the converter, and make defensible plots | 60 min |
+| [Bonus: module-based cluster](bonus/module-based-cluster/README.md) | Native compiler/MPI/HDF5/HYPRE build and per-user conda environment | Optional |
 
 ## Repository layout
 
 ```text
 agenda/                              concise agenda in Markdown and Word
+containers/                          commented definition, build/test scripts, CI blueprint
+bonus/module-based-cluster/          optional native/module workflow
 instructor/                          readiness checks and a fallback-data generator
 references/                          NCShare command and policy quick reference
-tutorials/03-cpu-inoisy/             C/MPI, Slurm, HYPRE, and inoisy+ materials
-tutorials/04-gpu-quantui/             conda, GPU smoke test, and Slurm materials
+tutorials/03-cpu-inoisy/             containerized MPI Slurm and inoisy+ materials
+tutorials/04-gpu-quantui/            containerized GPU verification and Slurm materials
 tutorials/05-visualization-postprocessing/
   scientific_visualization.ipynb     hands-on notebook
   data/                              small offline fallback datasets
@@ -38,12 +42,12 @@ tutorials/05-visualization-postprocessing/
 
 ## Path conventions
 
-The examples use three locations deliberately:
+The examples use four locations deliberately:
 
-- `$HOME/ncshare-software` for source code and installed software that should
-  persist.
+- `$HOME/ncshare-crash-course` for the small course repository.
 - `/work/$USER/ncshare-crash-course` for active inputs and results; NCShare
   currently purges files older than 75 days from `/work`.
+- `/opt/apps/containers/user` for an HPC-team-staged, shared course SIF.
 - Job-local `/scratch` only for temporary, high-I/O data that is copied out
   before a job ends.
 
@@ -52,21 +56,22 @@ Override the defaults when needed:
 ```bash
 export COURSE_ROOT="$HOME/ncshare-crash-course"
 export COURSE_WORK="/work/$USER/ncshare-crash-course"
-export INOISY_SRC="$HOME/ncshare-software/src/inoisy4d"
-export HYPRE_PREFIX="$HOME/ncshare-software/hypre-3.1.0-maxdim4"
-export QUANTUI_SRC="$HOME/ncshare-software/src/QuantUI"
+export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
 ```
 
 ## External software
 
-The course does not copy or alter the source of `inoisy4d` or QuantUI. Students
-clone those repositories and build/install them in their own space. Each
-external project retains its own license and citation requirements:
+The definition file clones recorded commits and compiles/installs them without
+altering their upstream source. Students use the reviewed SIF; instructors
+retain the definition, resolved package manifests, tests, and image checksum.
+Each external project retains its own license and citation requirements:
 
 - [alejandroc137/inoisy4d](https://github.com/alejandroc137/inoisy4d)
 - [The-Schultz-Lab/QuantUI](https://github.com/The-Schultz-Lab/QuantUI)
 - [hypre-space/hypre](https://github.com/hypre-space/hypre)
 
-The module names and partition limits in these files reflect the NCShare
-documentation and source repositories as checked on July 29, 2026. HPC
-administrators should validate them before each course offering.
+The container base, NCShare paths, partitions, and upstream source commits
+reflect documentation and repositories checked on July 29, 2026. HPC
+administrators should rebuild/test the SIF and validate current policy before
+each course offering. Module names appear only in the optional traditional-HPC
+bonus and must be customized for that site.

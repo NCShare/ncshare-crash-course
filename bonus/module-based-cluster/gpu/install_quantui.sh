@@ -9,18 +9,8 @@ fi
 COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 QUANTUI_SRC="${QUANTUI_SRC:-$HOME/ncshare-software/src/QuantUI}"
 CONDA_ROOT="${CONDA_ROOT:-$HOME/miniforge3}"
-ENV_FILE="$COURSE_ROOT/tutorials/04-gpu-quantui/environment.yml"
-ENV_NAME="ncshare-quantui"
-
-if [[ ! -f "$CONDA_ROOT/etc/profile.d/conda.sh" ]]; then
-  echo "Cannot find $CONDA_ROOT/etc/profile.d/conda.sh" >&2
-  exit 3
-fi
-
-if [[ ! -f "$QUANTUI_SRC/pyproject.toml" ]]; then
-  echo "No QuantUI checkout found at $QUANTUI_SRC" >&2
-  exit 4
-fi
+ENV_FILE="$COURSE_ROOT/bonus/module-based-cluster/gpu/environment.yml"
+ENV_NAME="ncshare-quantui-native"
 
 source "$CONDA_ROOT/etc/profile.d/conda.sh"
 
@@ -36,9 +26,7 @@ cd "$QUANTUI_SRC"
 python -m pip install --upgrade pip
 python -m pip install -e ".[pyscf,ase,app]"
 python -m pip install gpu4pyscf-cuda12x cupy-cuda12x cutensor-cu12
-
-python -m ipykernel install --user \
-  --name "$ENV_NAME" \
-  --display-name "Python (NCShare QuantUI)"
+conda list --explicit > native-conda-explicit.txt
+python -m pip freeze > native-pip-freeze.txt
 
 echo "Installed QuantUI commit $(git rev-parse --short HEAD) in $ENV_NAME"

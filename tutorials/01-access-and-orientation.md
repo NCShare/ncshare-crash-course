@@ -2,8 +2,8 @@
 
 ## Goal
 
-End with a shell on a compute node, a clear storage choice, and enough commands
-to navigate the rest of the workshop safely.
+End with a shell on a compute node, a clear storage choice, and the ability to
+inspect and execute the shared course container.
 
 ## 1. Identify where you are
 
@@ -27,8 +27,9 @@ du -sh "$HOME"
 df -h "$HOME" "/work/$USER"
 ```
 
-Use `$HOME` for code and environments, `/work/$USER` for active datasets and
-outputs, and `/scratch` only inside a job.
+Use `$HOME` for scripts and the course repository, `/work/$USER` for active
+datasets and outputs, and `/scratch` only inside a job. The HPC team stages the
+shared course SIF under `/opt/apps/containers/user`.
 
 ## 3. Practice the essential commands
 
@@ -44,7 +45,7 @@ du -sh .
 find . -maxdepth 1 -type f
 ```
 
-## 4. Clone an official example
+## 4. Clone and inspect official examples
 
 ```bash
 cd "$HOME"
@@ -52,6 +53,7 @@ git clone https://github.com/NCShare/examples.git
 cd examples
 find . -maxdepth 2 -type f | sort
 less README.md
+less Apptainer-Recipe-for-FHI-aims/fhiaims.def
 ```
 
 If it already exists:
@@ -61,7 +63,7 @@ cd "$HOME/examples"
 git pull --ff-only
 ```
 
-## 5. Request a compute shell
+## 5. Request a compute shell and enter the environment
 
 Use the instructor-provided workshop partition when available:
 
@@ -75,7 +77,11 @@ Otherwise, use the partition approved by the instructor. Inside the allocation:
 hostname -A
 echo "$SLURM_JOB_ID"
 echo "$SLURM_CPUS_PER_TASK"
-module avail
+export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
+apptainer --version
+apptainer inspect "$COURSE_IMAGE"
+apptainer exec "$COURSE_IMAGE" python --version
+apptainer exec "$COURSE_IMAGE" mpirun --version
 exit
 ```
 
@@ -85,4 +91,5 @@ Without looking back, answer:
 
 1. Am I on a login node or a compute node?
 2. How many CPUs and how much time did I request?
-3. Which files belong in `$HOME`, `/work/$USER`, and `/scratch`?
+3. Which parts of the workflow come from Slurm, the SIF, and bind-mounted data?
+4. Which files belong in `$HOME`, `/work/$USER`, and `/scratch`?

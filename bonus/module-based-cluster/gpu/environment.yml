@@ -1,9 +1,8 @@
-name: ncshare-quantui
+name: ncshare-quantui-native
 channels:
   - conda-forge
 dependencies:
   - python=3.11
   - pip
-  - numpy
-  - jupyterlab
   - ipykernel
+  - jupyterlab

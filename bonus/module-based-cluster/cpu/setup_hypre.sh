@@ -28,14 +28,13 @@ if [[ ! -d "$HYPRE_SOURCE/.git" ]]; then
 fi
 
 cd "$HYPRE_SOURCE/src"
-
 ./configure \
   --prefix="$HYPRE_PREFIX" \
-  --enable-bigint \
-  --enable-maxdim=4 \
-  CC=mpicc \
+    --enable-bigint \
+    --enable-maxdim=4 \
+    --disable-fortran \
+    CC=mpicc \
   CXX=mpicxx
-
 make -j "$BUILD_CPUS"
 make install
 

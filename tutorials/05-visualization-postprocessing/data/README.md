@@ -13,14 +13,21 @@ Slurm jobs:
 Regenerate the raw file with:
 
 ```bash
-python instructor/generate_fallback_data.py
+export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
+apptainer exec \
+  --bind "$PWD:$PWD" \
+  "$COURSE_IMAGE" \
+  python instructor/generate_fallback_data.py
 ```
 
-Then regenerate the processed pair from a clone of
+Then regenerate the processed pair with the unmodified converter packaged from
 [alejandroc137/inoisy4d](https://github.com/alejandroc137/inoisy4d):
 
 ```bash
-python /path/to/inoisy4d/tools/inoisy4d_to_visit_emissivity.py \
+apptainer exec \
+  --bind "$PWD:$PWD" \
+  "$COURSE_IMAGE" \
+  python /opt/inoisy4d/tools/inoisy4d_to_visit_emissivity.py \
   tutorials/05-visualization-postprocessing/data/sample_inoisy4d_lowres.h5 \
   --output-prefix tutorials/05-visualization-postprocessing/data/sample_inoisy4d_emissivity \
   --write-components --write-envelopes --compress --float32 --force

@@ -7,8 +7,8 @@ professionals with little or no HPC experience
 
 ## Purpose
 
-Move participants from “I have access” to “I can choose resources, submit a
-job, inspect its output, and continue my analysis.” The day uses the official
+Move participants from “I have access” to “I can inspect a reproducible
+environment, choose resources, submit a job, and continue my analysis.” The day uses the official
 [NCShare guides](https://userguide.ncshare.org/guides/) and
 [NCShare examples](https://github.com/NCShare/examples) throughout.
 
@@ -25,8 +25,10 @@ By the end of the workshop, participants can:
 
 - distinguish login, compute, CPU, and GPU nodes;
 - choose among `/hpc/home`, `/work`, and job-local `/scratch`;
-- load modules, install a user-space library, compile C/MPI code, and manage a
-  conda environment;
+- explain what belongs in Slurm, an Apptainer SIF, a bind mount, and the host
+  GPU driver;
+- read a definition file and identify how MPI, HYPRE, inoisy4d, Python,
+  QuantUI, and Jupyter were packaged and tested;
 - submit, monitor, diagnose, and cancel Slurm jobs;
 - run the same MPI application with one and four ranks, then run one GPU
   workflow with reasonable resources; and
@@ -55,9 +57,11 @@ teaching roles.
   why the login node is not a compute node;
 - 10:10-10:20: log in and verify identity, host, current directory, quota, and
   storage locations; and
-- 10:20-10:30: use the ten essential commands and the module system.
+- 10:20-10:30: use ten essential commands and the Apptainer execution model.
 
-**HPC administrator contribution:** HPC admins provide workshop access and teach the NCShare login/compute boundary, storage lifetimes, partitions, and support path.
+**HPC administrator contribution:** HPC admins provide workshop access and
+teach the NCShare login/compute boundary, storage lifetimes, partitions, and
+how the shared Apptainer image is built, staged, launched, and supported.
 
 **10:30-10:45 — Break**
 
@@ -66,7 +70,7 @@ teaching roles.
 - clone the course and `NCShare/examples` repositories;
 - inspect files safely with `pwd`, `ls`, `cd`, `less`, `du`, and `find`;
 - request a short interactive allocation and compare `hostname` before/after;
-- run `module avail`, load a compiler/MPI stack, and inspect it; and
+- run `apptainer inspect`, `run`, and `exec` on the shared course image; and
 - complete a two-minute checkpoint: “where am I, what resources do I have,
   where will my output go?”
 
@@ -81,52 +85,61 @@ reads; and plan the data lifecycle for the afternoon jobs.
 
 ### 12:00-1:00 — Lunch and discussion
 
-### 1:00-3:30 — Session 3: From source code to CPU and GPU jobs
+### 1:00-3:30 — Session 3: From definition file to CPU and GPU jobs
 
-This merged block covers the complete cluster workflow: clone → environment →
-compile/install → request resources → submit → monitor → inspect → improve.
+This merged block covers the complete workflow: requirements → definition →
+build/test/checksum → request resources → execute → monitor → inspect.
 
-**1:00-1:45 — CPU hands-on: unmodified inoisy+**
+**1:00-1:30 — Apptainer blueprint**
 
-- clone a real scientific C/MPI repository and inspect its README/Makefile;
-- load the compiler, MPI, parallel HDF5, and GSL modules;
-- install a user-space, four-dimensional HYPRE build;
-- compile the unmodified `inoisy4d` source without editing its Makefile; and
-- submit the same tiny global problem with one and four MPI ranks to produce
-  HDF5 output.
+- map the scientific requirements to a commented definition file;
+- explain the CUDA base, Open MPI/parallel HDF5/GSL packages, HYPRE build,
+  unmodified inoisy4d build, and Python/QuantUI/Jupyter environment;
+- distinguish what is inside the SIF from Slurm resources, host drivers, and
+  bind-mounted data;
+- inspect labels, package manifests, tests, and SHA-256 provenance; and
+- discuss build-once/reuse, security rebuilds, image size, and MPI compatibility.
 
-**1:45-2:15 — Scheduler and efficiency debrief**
+The HPC team prebuilds the SIF and demonstrates the approved NCShare build or
+GitLab pipeline; participants use the tested image while a demonstration build
+continues.
 
-Monitor with `squeue`, inspect logs and `sacct`, compare one-rank/four-rank
-timing, and diagnose pending or failed jobs without requesting unneeded
-resources.
+**1:30-2:15 — CPU hands-on: containerized inoisy+**
+
+Inspect the source/build provenance inside the SIF, bind `/work/$USER`, submit
+the same tiny global problem with one and four MPI ranks, monitor it, compare
+timing, and diagnose Slurm → Apptainer → application layers.
 
 **2:15-2:30 — Break**
 
 **2:30-3:15 — GPU hands-on: QuantUI**
 
-Create a dedicated conda environment, clone/install QuantUI and CUDA-specific
-GPU wheels, verify the H200 allocation, submit a small RHF calculation, and
-confirm from the result that GPU offload occurred.
+Inspect the Python environment and CUDA-specific wheels recorded in the SIF,
+separate Slurm's GPU allocation from Apptainer's `--nv` exposure, submit a
+small RHF calculation, and confirm `gpu_used=true` in the result.
 
 **3:15-3:30 — CPU/GPU comparison**
 
-Compare the CPU and GPU Slurm files, identify work that does not benefit from a
-GPU, and record one resource change participants would make before scaling up.
+Compare the CPU and GPU Slurm files, identify what the shared image does and
+does not control, and record one resource change before scaling.
 
-**Provided:** build helpers, one-rank/four-rank/GPU Slurm files, pinned HYPRE
-setup, low-resolution settings, expected outputs, and troubleshooting
-checkpoints.
+**Provided:** commented Apptainer definition, build/test/CI blueprints, image
+checksum, one-rank/four-rank/GPU Slurm files, low-resolution settings,
+expected outputs, and troubleshooting checkpoints.
 
 ### 3:30-4:30 — Session 4: Scientific visualization and post-processing
 
-Use the inoisy+ HDF5 result in Jupyter to inspect metadata without loading the
-full 4D array, plot distributions and slices, select honest normalization and
-color maps, run the upstream GRF-to-emissivity converter, compare raw and
-emissivity fields, and export a reproducible PNG/PDF figure.
+Launch Jupyter from the same SIF, inspect the inoisy+ HDF5 result without
+loading the full 4D array, plot distributions and slices, select honest
+normalization and color maps, run the containerized upstream
+GRF-to-emissivity converter, and export a reproducible PNG/PDF figure.
 
 ### 4:30-5:00 — Wrap-up and next steps
 
 Review the end-to-end workflow, locate NCShare documentation and local support,
 capture unresolved questions, and show how participants can contribute reusable
 examples back to the course or NCShare community.
+
+**Bonus material:** repeat the build natively on a traditional cluster with a
+compiler/MPI/HDF5/GSL module stack and per-user conda environments, then compare
+the provenance and maintenance trade-offs.

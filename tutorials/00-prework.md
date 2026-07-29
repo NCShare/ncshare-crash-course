@@ -26,19 +26,20 @@ exit
 
 The hostname should identify an NCShare login host.
 
-## 3. Install Miniforge in your home directory
+## 3. Confirm the course container path
 
-NCShare recommends a user-owned conda installation in `/hpc/home/$USER`.
-Follow the current
-[Cluster Software guide](https://userguide.ncshare.org/guides/slurm/software/).
-At the end, verify:
+The course uses a shared Apptainer image instead of a per-user compiler or conda
+installation. The instructor will publish the final path and SHA-256 checksum.
+After logging in, record:
 
 ```bash
-conda --version
-conda info --envs
+export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
+apptainer --version
+ls -lh "$COURSE_IMAGE"
 ```
 
-Do not install environments in `/work`; it is temporary storage.
+Do not download or build the multi-gigabyte SIF individually unless the
+instructor explicitly assigns the container-building exercise.
 
 ## 4. Clone the course
 
@@ -52,9 +53,10 @@ cd "$HOME/ncshare-crash-course"
 
 If the repository has already been cloned, use `git pull --ff-only` instead.
 
-## 5. Optional local preparation
+## 5. Optional preparation
 
 Review the
 [Getting Started Overview](https://userguide.ncshare.org/guides/overview/) and
-bring a laptop charger. No prior C/C++, MPI, quantum chemistry, or
+the [NCShare FHI-aims Apptainer example](https://userguide.ncshare.org/examples/apptainer-fhiaims/).
+Bring a laptop charger. No prior container, C/C++, MPI, quantum chemistry, or
 astrophysics knowledge is required.

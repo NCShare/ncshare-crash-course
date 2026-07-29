@@ -59,6 +59,13 @@ def set_repeat_table_header(row):
     tr_pr.append(header)
 
 
+def prevent_table_row_split(row):
+    tr_pr = row._tr.get_or_add_trPr()
+    cant_split = OxmlElement("w:cantSplit")
+    cant_split.set(qn("w:val"), "true")
+    tr_pr.append(cant_split)
+
+
 def set_cell_shading(cell, fill):
     tc_pr = cell._tc.get_or_add_tcPr()
     shd = tc_pr.find(qn("w:shd"))
@@ -292,6 +299,7 @@ def add_metric_strip(doc):
         set_font(value_run, size=10.5, color=NAVY, bold=True)
         cell.vertical_alignment = WD_CELL_VERTICAL_ALIGNMENT.CENTER
     set_repeat_table_header(table.rows[0])
+    prevent_table_row_split(table.rows[0])
     apply_table_geometry(table, [2340, 2340, 2340, 2340])
     set_table_borders(table, color="D4DDE7", size="4")
     doc.add_paragraph().paragraph_format.space_after = Pt(0)
@@ -301,14 +309,16 @@ def add_schedule_table(doc):
     rows = [
         ("9:00-9:30", "Check-in and setup", "Verified access and course clone"),
         ("9:30-9:45", "Welcome and goals", "Shared runnable outcomes"),
-        ("9:45-10:30", "Session 1A: cluster model", "Login/storage/module preflight"),
+        ("9:45-10:30", "Session 1A: cluster model", "Login/storage/container preflight"),
         ("10:30-10:45", "Break", ""),
         ("10:45-11:30", "Session 1B: guided practice", "First interactive allocation"),
         ("11:30-12:00", "Session 2: storage and I/O", "Data-lifecycle plan"),
         ("12:00-1:00", "Lunch and discussion", ""),
-        ("1:00-2:15", "Session 3A: inoisy+ on CPUs", "One-rank/four-rank HDF5 results"),
+        ("1:00-1:30", "Session 3A: Apptainer blueprint", "Inspected definition and SIF"),
+        ("1:30-2:15", "Session 3B: inoisy+ on CPUs", "One-rank/four-rank HDF5 results"),
         ("2:15-2:30", "Break", ""),
-        ("2:30-3:30", "Session 3B: QuantUI on GPU", "Verified GPU-offload result"),
+        ("2:30-3:15", "Session 3C: QuantUI on GPU", "Verified GPU-offload result"),
+        ("3:15-3:30", "CPU/GPU comparison", "Resource/environment boundary"),
         ("3:30-4:30", "Session 4: visualization", "Post-processed figure and notebook"),
         ("4:30-5:00", "Wrap-up", "Support path and next steps"),
     ]
@@ -326,6 +336,8 @@ def add_schedule_table(doc):
         if session in {"Break", "Lunch and discussion"}:
             for cell in cells:
                 set_cell_shading(cell, LIGHT_GRAY)
+    for row in table.rows:
+        prevent_table_row_split(row)
     apply_table_geometry(table, [1680, 3180, 4500])
     set_table_borders(table)
 
@@ -335,10 +347,10 @@ def add_session_plan_table(doc):
         ("9:45-9:55", "Map laptop → login → Slurm → compute → storage.", "Annotated workflow"),
         ("9:55-10:10", "Explain CPU/GPU resources, partitions, memory, and wall time.", "Resource vocabulary"),
         ("10:10-10:20", "Log in; verify identity, host, quota, and storage.", "Completed preflight"),
-        ("10:20-10:30", "Use ten commands and inspect the module system.", "Command/module record"),
+        ("10:20-10:30", "Use ten commands and inspect the Apptainer model.", "Command/container record"),
         ("10:30-10:45", "Break.", ""),
         ("10:45-11:00", "Clone the course and NCShare examples.", "Local repositories"),
-        ("11:00-11:20", "Request a compute shell; compare hosts and allocation variables.", "First allocation"),
+        ("11:00-11:20", "Request a compute shell; inspect and execute the course SIF.", "First allocation"),
         ("11:20-11:30", "Answer: where am I, what do I have, where does output go?", "Checkpoint answers"),
     ]
     table = doc.add_table(rows=1, cols=3)
@@ -354,6 +366,8 @@ def add_session_plan_table(doc):
         if activity == "Break.":
             for cell in cells:
                 set_cell_shading(cell, LIGHT_GRAY)
+    for row in table.rows:
+        prevent_table_row_split(row)
     apply_table_geometry(table, [1500, 4650, 3210])
     set_table_borders(table)
 
@@ -438,7 +452,7 @@ def build():
     subtitle.paragraph_format.space_before = Pt(0)
     subtitle.paragraph_format.space_after = Pt(16)
     run = subtitle.add_run(
-        "From cluster access to a reproducible CPU, GPU, and visualization workflow"
+        "From cluster access to one reproducible CPU, GPU, and Jupyter environment"
     )
     set_font(run, size=13.2, color=MUTED)
 
@@ -447,8 +461,8 @@ def build():
     add_heading(doc, "Purpose", 1)
     add_body(
         doc,
-        "Move participants from “I have access” to “I can choose resources, submit a job, "
-        "inspect its output, and continue my analysis.” The day uses the official NCShare "
+        "Move participants from “I have access” to “I can inspect a reproducible environment, "
+        "choose resources, submit a job, and continue my analysis.” The day uses official NCShare "
         "guides and examples throughout.",
     )
     links = doc.add_paragraph()
@@ -461,7 +475,7 @@ def build():
         doc,
         "Before the workshop",
         "Active NCShare account; registered SSH public key; laptop with SSH client; "
-        "course clone; user-owned Miniforge; GPU access requested in advance. Pairing "
+        "course clone; shared course-SIF path; GPU access requested in advance. Pairing "
         "is available for participants still waiting for access.",
     )
 
@@ -469,10 +483,11 @@ def build():
     outcomes = [
         "Distinguish login, compute, CPU, and GPU nodes.",
         "Choose among /hpc/home, /work, and job-local /scratch.",
-        "Load modules, install a user-space library, compile C/MPI code, and manage conda.",
+        "Separate Slurm resources, SIF software, bind-mounted data, and host GPU drivers.",
+        "Read an Apptainer definition and identify its build, provenance, and test evidence.",
         "Submit, monitor, diagnose, and cancel Slurm jobs.",
         "Run one-rank, four-rank MPI, and GPU workflows with reasonable resources.",
-        "Inspect HDF5, post-process a GRF, and export an accessible scientific figure.",
+        "Reuse the SIF to post-process HDF5 and export an accessible scientific figure.",
     ]
     for item in outcomes:
         add_bullet(doc, item, bullet_num)
@@ -492,12 +507,13 @@ def build():
         doc,
         "HPC administrator contribution",
         "HPC admins provide workshop access and teach the NCShare login/compute boundary, "
-        "storage lifetimes, partitions, and support path.",
+        "storage lifetimes, partitions, and how the shared Apptainer image is built, "
+        "staged, launched, and supported.",
     )
     add_body(
         doc,
-        "Provided: command card, annotated cluster workflow, access troubleshooting, "
-        "and a verified interactive-allocation command.",
+        "Provided: command card, annotated Slurm/container/data workflow, access "
+        "troubleshooting, and a verified interactive-allocation command.",
     )
 
     add_heading(doc, "Session 2 • Storage, transfer, and I/O", 1)
@@ -508,44 +524,45 @@ def build():
         "lifecycle for the afternoon jobs.",
     )
     for item in (
-        "Use /hpc/home for scripts, environments, and user software.",
+        "Use /hpc/home for scripts, the course clone, and small user configuration.",
         "Use /work for active data and move retained results off NCShare.",
+        "Use the HPC-team-staged SIF instead of per-user scientific-software installs.",
         "Use job-local /scratch for temporary high-I/O work and copy results out.",
         "Never place sensitive data on NCShare.",
     ):
         add_bullet(doc, item, bullet_num)
 
-    add_heading(doc, "Session 3 • From source code to CPU and GPU jobs", 1)
+    add_heading(doc, "Session 3 • From definition file to CPU and GPU jobs", 1)
     add_body(
         doc,
-        "1:00-3:30 (with a 2:15-2:30 break). This merged block covers clone → "
-        "environment → install/compile → request → submit → monitor → inspect.",
+        "1:00-3:30 (with a 2:15-2:30 break). This merged block covers requirements → "
+        "definition → build/test/checksum → request → execute → monitor → inspect.",
     )
 
-    add_heading(doc, "1:00-1:45 • inoisy+ on CPUs", 2)
+    add_heading(doc, "1:00-1:30 • Apptainer blueprint", 2)
     for item in (
-        "Clone a real scientific C/MPI repository and inspect its README and Makefile.",
-        "Load compiler, MPI, parallel HDF5, and GSL modules.",
-        "Install a user-space HYPRE build with four-dimensional SStruct support.",
-        "Compile unmodified inoisy4d without editing its source or Makefile.",
-        "Submit the same 16⁴ global grid with one and four MPI ranks; retain HDF5 output.",
+        "Map both applications to one commented CUDA/Ubuntu definition file.",
+        "Locate Open MPI, parallel HDF5, GSL, HYPRE(maxdim=4), and unmodified inoisy4d.",
+        "Locate Python 3.11, QuantUI, CUDA wheels, Jupyter, and plotting libraries.",
+        "Separate SIF software from Slurm, host drivers, bind mounts, and mutable data.",
+        "Inspect labels, resolved package manifests, tests, and the SIF checksum.",
     ):
         add_bullet(doc, item, bullet_num)
 
-    add_heading(doc, "1:45-2:15 • Scheduler and efficiency debrief", 2)
-    add_body(
-        doc,
-        "Use squeue, logs, and sacct to compare job states, elapsed time, memory, and "
-        "exit codes. Treat slower parallel timing for a tiny problem as a lesson in "
-        "overhead, not a reason to request more resources.",
-    )
+    add_heading(doc, "1:30-2:15 • Containerized inoisy+ on CPUs", 2)
+    for item in (
+        "Inspect the application source and build provenance stored in the SIF.",
+        "Bind /work, then submit the same 16⁴ grid with one and four MPI ranks.",
+        "Use squeue, logs, and sacct to compare job state, time, memory, and exit code.",
+        "Diagnose Slurm → Apptainer → application before rebuilding or resubmitting.",
+    ):
+        add_bullet(doc, item, bullet_num)
 
-    doc.add_page_break()
     add_heading(doc, "2:30-3:15 • QuantUI on an H200 GPU", 2)
     for item in (
-        "Create a Python 3.11 conda environment on a CPU allocation.",
-        "Install QuantUI plus CUDA 12.x GPU wheels and register its Jupyter kernel.",
-        "Request one H200 GPU, verify the device, and submit a small RHF calculation.",
+        "Inspect the SIF's Python 3.11 environment, package manifests, and QuantUI commit.",
+        "Separate Slurm's H200 allocation from Apptainer's --nv device exposure.",
+        "Verify the device/environment and submit a small RHF calculation.",
         "Confirm QuantUI reports gpu_used=true; do not infer use from allocation alone.",
     ):
         add_bullet(doc, item, bullet_num)
@@ -553,22 +570,22 @@ def build():
     add_heading(doc, "3:15-3:30 • CPU/GPU comparison", 2)
     add_body(
         doc,
-        "Compare the Slurm files, identify work that does not benefit from a GPU, and "
-        "record one resource change to make before scaling.",
+        "Compare the Slurm files, identify what the shared image does and does not "
+        "control, and record one resource change before scaling.",
     )
     add_callout(
         doc,
         "Provided",
-        "HYPRE/build helpers, one-rank/four-rank/GPU Slurm files, low-resolution "
-        "settings, expected outputs, and troubleshooting checkpoints.",
+        "Commented definition, build/test/CI blueprints, SIF checksum, one-rank/"
+        "four-rank/GPU Slurm files, low-resolution settings, and troubleshooting.",
     )
 
     add_heading(doc, "Session 4 • Scientific visualization and post-processing", 1)
     add_body(
         doc,
-        "3:30-4:30. In Jupyter, inspect HDF5 lazily, plot distributions and slices, "
-        "choose honest color/normalization, run the upstream GRF-to-emissivity converter, "
-        "compare raw and positive fields, and export PNG/PDF figures with provenance.",
+        "3:30-4:30. Launch Jupyter from the same SIF; inspect HDF5 lazily; choose honest "
+        "color/normalization; run the containerized upstream GRF-to-emissivity converter; "
+        "and export PNG/PDF figures with image, input, and plot provenance.",
     )
 
     add_heading(doc, "Wrap-up • 4:30-5:00", 1)
@@ -576,6 +593,13 @@ def build():
         doc,
         "Review the end-to-end workflow, locate NCShare documentation and local support, "
         "capture unresolved questions, and show how participants can contribute examples.",
+    )
+    add_callout(
+        doc,
+        "Bonus",
+        "Repeat the workflow on a traditional module-based cluster with native "
+        "compiler/MPI/HDF5/HYPRE and per-user conda, then compare provenance, "
+        "maintenance, portability, and multi-node integration.",
     )
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

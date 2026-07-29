@@ -18,17 +18,12 @@ module load libs/hdf5/1.14.6
 
 if [[ ! -f "$HYPRE_PREFIX/lib/libHYPRE.so" && ! -f "$HYPRE_PREFIX/lib/libHYPRE.a" ]]; then
   echo "No HYPRE library found under $HYPRE_PREFIX." >&2
-  echo "Run setup_hypre.sh or use the instructor-provided HYPRE_PREFIX." >&2
   exit 3
-fi
-
-if [[ ! -f "$INOISY_SRC/Makefile" ]]; then
-  echo "No inoisy4d checkout found at $INOISY_SRC." >&2
-  exit 4
 fi
 
 cd "$INOISY_SRC"
 make -j "$BUILD_CPUS" HYPRE_DIR="$HYPRE_PREFIX" CC=h5pcc
 
+module list 2>&1 | tee "$INOISY_SRC/native-build-modules.txt"
 echo "Built $INOISY_SRC/inoisy4d"
 echo "inoisy4d commit: $(git rev-parse --short HEAD)"

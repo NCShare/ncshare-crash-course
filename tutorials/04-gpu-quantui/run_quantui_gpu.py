@@ -47,6 +47,7 @@ def main() -> None:
         "gpu_used": bool(result.gpu_used),
         "gpu_name": result.gpu_name,
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
+        "course_image": os.environ.get("COURSE_IMAGE"),
         "quantui_commit": os.environ.get("QUANTUI_COMMIT"),
     }
 
