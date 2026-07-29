@@ -1,0 +1,14 @@
+name: ncshare-viz
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - numpy
+  - h5py
+  - matplotlib
+  - pandas
+  - seaborn
+  - jupyterlab
+  - ipykernel
+  - nbclient
+  - nbformat

@@ -1,0 +1,344 @@
+<?xml version="1.0" ?>
+<!DOCTYPE Xdmf SYSTEM "Xdmf.dtd" []>
+<Xdmf Version="2.0">
+  <Domain>
+    <Grid Name="inoisy4d" GridType="Collection" CollectionType="Temporal">
+      <Grid Name="step_000000" GridType="Uniform">
+        <Time Value="0"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000000
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000000
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000000
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000000
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000000
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000000
+          </DataItem>
+        </Attribute>
+      </Grid>
+      <Grid Name="step_000001" GridType="Uniform">
+        <Time Value="5"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000001
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000001
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000001
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000001
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000001
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000001
+          </DataItem>
+        </Attribute>
+      </Grid>
+      <Grid Name="step_000002" GridType="Uniform">
+        <Time Value="10"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000002
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000002
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000002
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000002
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000002
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000002
+          </DataItem>
+        </Attribute>
+      </Grid>
+      <Grid Name="step_000003" GridType="Uniform">
+        <Time Value="15"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000003
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000003
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000003
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000003
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000003
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000003
+          </DataItem>
+        </Attribute>
+      </Grid>
+      <Grid Name="step_000004" GridType="Uniform">
+        <Time Value="20"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000004
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000004
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000004
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000004
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000004
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000004
+          </DataItem>
+        </Attribute>
+      </Grid>
+      <Grid Name="step_000005" GridType="Uniform">
+        <Time Value="25"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000005
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000005
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000005
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000005
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000005
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000005
+          </DataItem>
+        </Attribute>
+      </Grid>
+      <Grid Name="step_000006" GridType="Uniform">
+        <Time Value="30"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000006
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000006
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000006
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000006
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000006
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000006
+          </DataItem>
+        </Attribute>
+      </Grid>
+      <Grid Name="step_000007" GridType="Uniform">
+        <Time Value="35"/>
+        <Topology TopologyType="3DCoRectMesh" NumberOfElements="17 17 17"/>
+        <Geometry GeometryType="Origin_DxDyDz">
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            -20 -20 -20
+          </DataItem>
+          <DataItem Dimensions="3" NumberType="Float" Precision="8" Format="XML">
+            2.5 2.5 2.5
+          </DataItem>
+        </Geometry>
+        <Attribute Name="emissivity" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/emissivity_000007
+          </DataItem>
+        </Attribute>
+        <Attribute Name="Fhat" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/Fhat_000007
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_disk_000007
+          </DataItem>
+        </Attribute>
+        <Attribute Name="j_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/j_jet_000007
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_disk" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_disk_000007
+          </DataItem>
+        </Attribute>
+        <Attribute Name="jbar_jet" AttributeType="Scalar" Center="Cell">
+          <DataItem Dimensions="16 16 16" NumberType="Float" Precision="8" Format="HDF">
+            sample_inoisy4d_emissivity.h5:/data/jbar_jet_000007
+          </DataItem>
+        </Attribute>
+      </Grid>
+    </Grid>
+  </Domain>
+</Xdmf>
