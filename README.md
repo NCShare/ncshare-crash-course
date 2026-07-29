@@ -1,10 +1,9 @@
 # NCShare Crash Course
 
-An upload-ready, one-day, hands-on introduction to NCShare for undergraduate
-students and other new HPC users. The exercises use the official
+An upload-ready, one-day, hands-on introduction to NCShare for new HPC users. The exercises use the official
 [NCShare user guides](https://userguide.ncshare.org/guides/) and
 [NCShare examples](https://github.com/NCShare/examples), then move through
-a reproducible Apptainer build, the unmodified `inoisy4d` C/MPI application,
+a reproducible Apptainer build, and two science applications: `inoisy4d` C/MPI application,
 a GPU-enabled QuantUI calculation, and scientific visualization/post-processing.
 
 ## Start here
