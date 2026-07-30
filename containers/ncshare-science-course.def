@@ -100,6 +100,11 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
     bash /tmp/miniforge.sh -b -p /opt/conda
     rm -f /tmp/miniforge.sh
 
+    # ``pyscf`` is pinned >=2.13 here deliberately. QuantUI's ``[pyscf]``
+    # extra requires ``pyscf>=2.13.0``; if conda-forge resolved anything
+    # older, the pip step below would overwrite a conda-managed package
+    # in place, leaving conda's metadata claiming files pip now owns.
+    # Satisfying the constraint up front keeps a single installer in charge.
     /opt/conda/bin/mamba create -y -p /opt/course-env \
         --override-channels -c conda-forge \
         python=3.11 \
@@ -111,7 +116,7 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
         nbformat \
         numpy \
         pandas \
-        pyscf \
+        "pyscf>=2.13" \
         rdkit \
         scipy \
         seaborn
@@ -120,12 +125,20 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
     QUANTUI_COMMIT="fcf0c08944d360f510ea274eaa0315e2d7e530b7"
     git clone https://github.com/The-Schultz-Lab/QuantUI.git /opt/QuantUI
     git -C /opt/QuantUI checkout "${QUANTUI_COMMIT}"
+
+    # The CUDA wheels come from QuantUI's own ``gpu-cuda12x`` extra rather
+    # than being listed here, so the image cannot drift from what QuantUI
+    # declares. That extra resolves to gpu4pyscf-cuda12x, cupy-cuda12x and
+    # cutensor-cu12.
+    #
+    # cuda12x -- not cuda13x -- is deliberate. NCShare's H200s report a
+    # recently updated driver, but CUDA's driver API is backward compatible:
+    # cuda12x wheels run on both the older 570.x line and a 580+/CUDA 13
+    # driver, whereas cuda13x requires >=580 and would fail on 570.x. It
+    # also matches this image's CUDA 12.8.1 base. The H200 is sm_90
+    # (Hopper), which the prebuilt wheels cover, so no local nvcc is needed.
     /opt/course-env/bin/python -m pip install --no-cache-dir \
-        -e "/opt/QuantUI[pyscf,ase,app]"
-    /opt/course-env/bin/python -m pip install --no-cache-dir \
-        gpu4pyscf-cuda12x \
-        cupy-cuda12x \
-        cutensor-cu12
+        -e "/opt/QuantUI[pyscf,ase,app,gpu-cuda12x]"
 
     # Record the resolved packages inside the image. The definition records
     # intent; these manifests record the exact result of this build.
@@ -164,5 +177,9 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
     h5pcc.openmpi -showconfig | grep -i "Parallel HDF5"
     python -c "import quantui, pyscf, h5py, numpy, pandas, matplotlib, seaborn"
     python -c "from quantui import Molecule, run_in_session; print('QuantUI API OK')"
+    # Fail the build if pyscf was silently downgraded below QuantUI's floor.
+    python -c "import pyscf; v=tuple(int(x) for x in pyscf.__version__.split('.')[:2]); assert v >= (2,13), f'pyscf too old: {pyscf.__version__}'; print('PySCF', pyscf.__version__, 'OK')"
+    # Confirm exactly one pyscf is installed (no conda/pip double-ownership).
+    test "$(python -m pip list --format=freeze | grep -ci '^pyscf==')" = "1"
     test -f /opt/inoisy4d/tools/inoisy4d_to_visit_emissivity.py
     echo "Container build-time tests passed."

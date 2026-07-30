@@ -1,6 +1,6 @@
 # Tutorial: Run a containerized Python application on a GPU
 
-**Guided time:** 45 minutes  
+**Guided time:** 60 minutes (45 min GPU hands-on plus the CPU/GPU comparison)  
 **Application:** [The-Schultz-Lab/QuantUI](https://github.com/The-Schultz-Lab/QuantUI)  
 **Concepts:** Python environment design, container provenance, CUDA user-space
 libraries, GPU allocation, `--nv`, application-level offload evidence, and
@@ -20,6 +20,23 @@ built. Students inspect that environment rather than creating slightly
 different conda environments in every home directory. At runtime, Slurm grants
 one H200 and Apptainer's `--nv` flag exposes the host NVIDIA driver/devices to
 the image.
+
+## The hardware you are actually using
+
+NCShare's GPU tier is four nodes, each with **eight NVIDIA H200 SXM (141 GB
+HBM3e)** and roughly 96 physical CPU cores plus 2 TB of RAM — 32 H200s in
+total. That works out to about 12 CPU cores per GPU, which is why the batch
+job below asks for four.
+
+Two consequences worth noting before you start:
+
+- The H200 is compute capability **9.0** (Hopper). Both `gpu4pyscf-cuda12x`
+  and `cupy-cuda12x` ship prebuilt wheels for it, so nothing has to be
+  compiled against a local CUDA toolkit at image-build time.
+- The image carries its own complete CUDA 12.8 user-space. Only the driver
+  libraries come from the host through `--nv`, and the CUDA driver API is
+  backward compatible — which is why a `cuda12x` build keeps working when
+  the cluster's driver is upgraded.
 
 We use a tiny water RHF/STO-3G calculation. The chemistry is context; the goal
 is to prove that scheduler request, host driver, container environment, and
@@ -85,7 +102,7 @@ actually followed QuantUI's offload path.
 Request one short GPU allocation:
 
 ```bash
-srun -p interactive-gpu \
+srun -p workshop \
   --gres=gpu:h200:1 \
   --time=00:10:00 \
   --cpus-per-task=4 \
@@ -156,11 +173,60 @@ Expected fields include:
 }
 ```
 
-This molecule is too small for a meaningful speed benchmark. The defensible
-claim is that the calculation used QuantUI's supported GPU-offload path—not
-that it was faster than a CPU calculation.
+This tells you the calculation followed QuantUI's supported GPU-offload
+path. It does **not** tell you the GPU was faster—water/STO-3G is far too
+small for that. The next section measures that question directly.
 
-## 40-45 min — Explain and improve the design
+## 40-52 min — Find the crossover
+
+A GPU is not simply "faster". Every offloaded calculation pays a fixed cost:
+launching kernels and moving data between host and device. For a small
+system that overhead dominates the actual arithmetic, so **the CPU wins**. As
+the basis set grows, integral and Fock construction grow faster than the
+overhead, and at some point **the GPU wins**. Where that crossover sits
+depends on the molecule, basis, method, and the specific hardware.
+
+Measure it rather than assuming it:
+
+```bash
+cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
+
+# Small system: expect the CPU to win
+apptainer exec --nv --cleanenv \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  --env "COURSE_WORK=$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  python run_cpu_gpu_comparison.py --preset small
+
+# Larger system: expect the GPU to win
+apptainer exec --nv --cleanenv \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  --env "COURSE_WORK=$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  python run_cpu_gpu_comparison.py --preset large
+```
+
+The script runs each leg in a separate process. That is a requirement, not a
+style choice: QuantUI caches its GPU probe on first use, so the CPU leg has
+to set `QUANTUI_DISABLE_GPU=1` *before* QuantUI or gpu4pyscf is imported.
+Forcing CPU inside a running interpreter would be silently ignored, and the
+"CPU" timing would really be a second GPU run.
+
+Both legs print a wall time and the total energy. Check that the energies
+agree to ~1e-6 Hartree: if the two devices disagree on the answer, the
+timing comparison is meaningless.
+
+Record your numbers:
+
+| System | CPU (s) | GPU (s) | Faster |
+|---|---:|---:|---|
+| H2O RHF/STO-3G | | | |
+| C6H6 RHF/cc-pVDZ | | | |
+
+Then discuss: at what point would it be worth requesting a GPU for your own
+work, and what would you have to measure to know?
+
+## 52-60 min — Explain and improve the design
 
 With a partner, answer:
 
@@ -170,6 +236,8 @@ With a partner, answer:
    job?
 4. What evidence would you retain with a published result?
 5. When must the definition/SIF be rebuilt rather than merely resubmitting?
+6. Your small system ran faster on the CPU. What would you tell a colleague
+   who says "we bought GPUs, so run everything on them"?
 
 For longer jobs on a preemptible GPU partition, checkpoint application state.
 Do not run CPU-only installation, visualization, or data preparation on a GPU.

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #SBATCH --job-name=quantui-gpu
-#SBATCH --partition=interactive-gpu
+#SBATCH --partition=workshop
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
@@ -8,6 +8,11 @@
 #SBATCH --mem=16G
 #SBATCH --time=00:10:00
 #SBATCH --output=/work/%u/ncshare-crash-course/logs/%x-%j.out
+
+# TODO (confirm before the workshop): partition name and --gres string.
+# TODO (confirm before the workshop): resource allocation
+#   NCShare GPU nodes carry 8 H200s alongside ~96 physical cores, so roughly
+#   12 cores per GPU. Four is a comfortable share for this single-GPU example.
 
 set -euo pipefail
 
