@@ -1,0 +1,72 @@
+# NCShare Crash Course
+#
+# Note what is deliberately NOT ignored: the sample HDF5/XDMF datasets under
+# tutorials/05-visualization-postprocessing/data/ and agenda/Agenda_Revised.docx
+# are tracked on purpose, so there are no blanket *.h5 / *.docx rules here.
+
+# ---- Container images --------------------------------------------------
+# The course SIF is multi-gigabyte and is staged by the HPC team, never
+# committed. Participants who build locally must not push the result.
+*.sif
+*.simg
+*.sqsh
+
+# ---- Operating system cruft --------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# ---- Python ------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments, in case anyone builds one inside a clone
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Jupyter -----------------------------------------------------------
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# ---- Slurm and job output ----------------------------------------------
+# The course .sbatch files direct output to /work/$USER, but a job submitted
+# without that override drops its log in the working directory.
+slurm-*.out
+*.sbatch.out
+
+# ---- Course run artefacts ----------------------------------------------
+# Results belong in $COURSE_WORK (/work/$USER/ncshare-crash-course). These
+# rules catch the case where someone points COURSE_WORK at their clone.
+/logs/
+quantui_gpu_result.json
+cpu_gpu_comparison_*.json
+
+# inoisy4d writes its solver output next to the binary when run in place.
+# The tracked sample_* datasets under tutorials/05-.../data/ are unaffected.
+data_raw*.h5
+inoisy4d_output*.h5
+
+# ---- Editors and office lock files -------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+# Word/LibreOffice lock files, likely alongside the tracked agenda .docx
+~$*
+.~lock.*#
