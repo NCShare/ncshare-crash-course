@@ -19,7 +19,7 @@ CPU, memory, time, and GPU resources; Apptainer supplies the application
 environment.
 
 ```text
-definition file + pinned source commits
+definition file + reviewed source selections
                 |
                 v
         one tested SIF image
@@ -47,6 +47,22 @@ This boundary is central to the lesson: a container packages software; it does
 not bypass Slurm, create a GPU, increase memory, or make a poor resource request
 efficient.
 
+## The two files involved
+
+The container lesson uses two different kinds of files:
+
+- [`ncshare-science-course.def`](ncshare-science-course.def) is the
+  **definition file**: a text recipe describing the desired image.
+- [`build_container.sh`](build_container.sh) is a **shell script**: a sequence
+  of commands that chooses build locations, checks that the build is running
+  in an approved place, invokes Apptainer, runs the tests, and writes a
+  checksum.
+
+The definition is input and the `.sif` is output. Editing a definition does
+not modify an already-built SIF. A SIF is an immutable artifact, so any change
+to source code, dependencies, build options, labels, or tests requires a new
+build.
+
 ## How the blueprint was created
 
 Open [`ncshare-science-course.def`](ncshare-science-course.def) and map each
@@ -57,8 +73,11 @@ section to a requirement:
    the same image without GPU exposure.
 2. **Compiled stack:** Ubuntu packages supply Open MPI, parallel HDF5, and GSL.
    The recipe builds HYPRE `v3.1.0` with four-dimensional SStruct support.
-3. **Scientific application:** the unmodified inoisy4d repository is checked
-   out at a recorded commit and compiled against those libraries.
+3. **Scientific application:** the unmodified inoisy4d default branch is
+   downloaded and compiled against those libraries. The exact commit selected
+   during that build is recorded inside the image. This “latest at build time”
+   policy is convenient for this actively developed course application, but
+   two builds on different dates may contain different source revisions.
 4. **Python stack:** a Python 3.11 environment supplies Jupyter and plotting
    libraries. QuantUI is checked out at a recorded commit and installed with
    CUDA 12.x `gpu4pyscf`, CuPy, and cuTENSOR wheels.
@@ -71,22 +90,99 @@ the exact image that ran a job.
 
 ## 0-10 min — Read a definition file
 
-Find the standard Apptainer sections:
+An Apptainer definition is divided into a short header followed by `%sections`.
+Not every definition needs every section, and the order below is a useful
+reading order rather than a requirement to memorize syntax.
+
+Open this course's definition with:
 
 ```bash
 less containers/ncshare-science-course.def
 ```
 
-- `Bootstrap` and `From` select a trusted base.
-- `%labels` record provenance that `apptainer inspect` can display.
-- `%post` installs and compiles software at build time.
-- `%environment` defines the runtime paths.
-- `%runscript` defines `apptainer run`.
-- `%test` rejects an image whose basic tools cannot be imported or found.
+- `Bootstrap: docker` tells Apptainer to begin from a Docker/OCI image.
+- `From:` names that base image. It supplies Ubuntu and CUDA user-space
+  libraries; it does not supply an NCShare GPU allocation or host driver.
+- `%labels` stores short metadata such as dependency versions and the blueprint
+  version. `apptainer inspect` displays these labels later.
+- `%help` becomes built-in usage text available from the finished image.
+- `%environment` sets variables such as `PATH` whenever the image runs.
+  `PATH` is the ordered list of directories searched for commands.
+- `%post` is the main build stage. Its commands run inside a temporary,
+  writable build filesystem: install Ubuntu packages, compile HYPRE, compile
+  inoisy4d, create the Python environment, and install QuantUI.
+- `%runscript` defines what happens for `apptainer run IMAGE.sif`.
+- `%test` contains fast checks that must pass before the image is accepted.
 
-Build-time commands do not run again when a student submits a job.
+Indented lines belong to the section above them. Lines beginning with `#` are
+comments for human readers. Build-time commands in `%post` do not run again
+when a student submits a job.
 
-## 10-18 min — Build once
+### Where is the code compiled?
+
+During `apptainer build`, Apptainer constructs a temporary writable filesystem
+using the base image. Inside that build environment:
+
+- HYPRE source is cloned below `/opt/src/hypre`, compiled with `make`, and
+  installed into `/opt/hypre`;
+- inoisy4d source is cloned into `/opt/inoisy4d` and compiled there against the
+  packaged MPI, parallel HDF5, GSL, and HYPRE; and
+- the Python environment is created at `/opt/course-env`, while QuantUI source
+  is retained at `/opt/QuantUI`.
+
+Those `/opt/...` paths are paths **inside the image**, not directories students
+should create in their NCShare home directories. The completed filesystem is
+sealed into the SIF. Runtime jobs execute the compiled `inoisy4d` binary from
+that image and write mutable results through a bind mount to `/work/$USER`.
+
+### What if source code changes?
+
+Changing a GitHub repository does not alter an existing image. To use changed
+source, an instructor must:
+
+1. decide which revision the definition should obtain;
+2. edit the definition if its source URL, branch, commit, dependencies, or
+   build command must change;
+3. run a new image build in an approved allocation or CI runner;
+4. rerun CPU and GPU verification plus the course jobs; and
+5. publish the new SIF path or checksum so students know which artifact to use.
+
+Because this definition selects the latest inoisy4d default branch, rebuilding
+is sufficient to obtain a newer revision, but the resulting commit and SIF
+checksum must be reviewed. QuantUI is pinned to a specific commit; selecting a
+newer QuantUI version requires changing `QUANTUI_COMMIT` in the definition
+before rebuilding. For a student experiment, the optional module-based lesson
+is often quicker than rebuilding the shared class image.
+
+## 10-18 min — Understand the build script
+
+Read the wrapper before executing it:
+
+```bash
+less containers/build_container.sh
+```
+
+The first line, `#!/usr/bin/env bash`, selects Bash as the interpreter.
+`set -euo pipefail` makes the script stop on failed commands, unset variables,
+or failed commands hidden inside pipelines. The assignments that follow use
+the form `${NAME:-default}`: use `NAME` if the caller set it, otherwise use the
+displayed default.
+
+The script then:
+
+1. chooses the definition, output image, cache, and temporary directories;
+2. refuses to build on a login node by requiring a Slurm job or CI context;
+3. verifies that `apptainer` and the definition file exist;
+4. creates the needed `/work/$USER` directories;
+5. runs `apptainer build OUTPUT.sif INPUT.def`;
+6. runs the definition's `%test` section with `apptainer test`; and
+7. writes a SHA-256 checksum beside the SIF.
+
+The cache and temporary build data are placed under `/work` because they can
+be large. The checksum is a compact identity for the exact bytes of the image;
+it is not a substitute for testing or reviewing the recipe.
+
+## Build once
 
 For a workshop, the HPC team should build and test the image before class.
 Students inspect the recipe and watch or trigger one shared build rather than
@@ -103,6 +199,11 @@ bash "$COURSE_ROOT/containers/build_container.sh"
 exit
 ```
 
+The `srun` options request a one-hour interactive CPU allocation with eight
+cores and 24 GB of memory. `bash SCRIPT` asks Bash to execute the wrapper. The
+script prints the chosen definition, cache, temporary directory, and output
+image so the build record can be checked.
+
 The script places cache, temporary build data, the image, and its checksum
 under `/work/$USER` by default. A first build can take tens of minutes, so the
 course uses the prebuilt result while the demonstration build continues.
@@ -115,7 +216,7 @@ filename matches the tutorials, then copy this file to `.gitlab-ci.yml`. The
 runner builds, tests, checksums, and deploys the image. Coordinate access and
 the final global image location with the HPC team.
 
-## 18-23 min — Inspect and verify
+## Inspect and verify
 
 ```bash
 export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
@@ -123,6 +224,11 @@ apptainer inspect "$COURSE_IMAGE"
 apptainer run "$COURSE_IMAGE"
 bash containers/verify_container.sh "$COURSE_IMAGE" cpu
 ```
+
+`inspect` shows stored metadata, `run` invokes `%runscript`, and the verification
+script invokes `%test` plus CPU-specific import, executable, MPI, and parallel
+HDF5 checks. Its optional `gpu` mode must run inside a GPU allocation because
+it also uses `--nv`, `nvidia-smi`, and `quantui gpu check`.
 
 Record:
 
@@ -135,7 +241,7 @@ The instructor publishes the expected checksum. A mismatch is not automatically
 malicious, but it means the class is not using the same artifact and should
 stop to identify why.
 
-## 23-30 min — Explain the trade-offs
+## Explain the trade-offs
 
 ### Advantages
 

@@ -60,17 +60,19 @@ export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
 
 ## External software
 
-The definition file clones recorded commits and compiles/installs them without
-altering their upstream source. Students use the reviewed SIF; instructors
-retain the definition, resolved package manifests, tests, and image checksum.
+The definition file downloads upstream source and compiles/installs it without
+altering that source. QuantUI is pinned to a recorded commit; inoisy4d follows
+the latest default branch at build time and records the resolved commit inside
+the image. Students use the reviewed SIF; instructors retain the definition,
+resolved package manifests, tests, source revisions, and image checksum.
 Each external project retains its own license and citation requirements:
 
 - [alejandroc137/inoisy4d](https://github.com/alejandroc137/inoisy4d)
 - [The-Schultz-Lab/QuantUI](https://github.com/The-Schultz-Lab/QuantUI)
 - [hypre-space/hypre](https://github.com/hypre-space/hypre)
 
-The container base, NCShare paths, partitions, and upstream source commits
-reflect documentation and repositories checked on July 29, 2026. HPC
+The container base, NCShare paths, partitions, and upstream source-selection
+policy reflect documentation and repositories checked on July 29, 2026. HPC
 administrators should rebuild/test the SIF and validate current policy before
 each course offering. Module names appear only in the optional traditional-HPC
 bonus and must be customized for that site.

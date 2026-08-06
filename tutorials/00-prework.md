@@ -1,6 +1,8 @@
 # Pre-workshop setup
 
-Complete this before the workshop. Bring any error message with you rather than
+Complete this before the workshop. Setup happens partly in a terminal on your
+laptop and partly after connecting to NCShare. If a command fails, copy the
+command and its complete error message; that evidence is more useful than
 repeating setup attempts blindly.
 
 ## 1. Activate your NCShare account
@@ -24,7 +26,12 @@ hostname -A
 exit
 ```
 
-The hostname should identify an NCShare login host.
+Open a terminal on your laptop, replace `NCSHARE_UID` with your account ID, and
+type the commands one line at a time. `ssh` opens the remote session,
+`hostname -A` asks the remote computer to identify itself, and `exit` closes
+the session. The hostname should identify an NCShare login host. Session 1
+introduces terminals, shell variables, paths, and command options in more
+detail.
 
 ## 3. Confirm the course container path
 
@@ -38,6 +45,11 @@ apptainer --version
 ls -lh "$COURSE_IMAGE"
 ```
 
+`export` gives the long image path the shorter variable name `COURSE_IMAGE`.
+`apptainer --version` verifies that the container runtime is available, while
+`ls -lh` verifies that the shared image exists and is readable. A SIF is a
+read-only Apptainer image containing the course software.
+
 Do not download or build the multi-gigabyte SIF individually unless the
 instructor explicitly assigns the container-building exercise.
 
@@ -50,6 +62,11 @@ cd "$HOME"
 git clone <COURSE_REPOSITORY_URL> ncshare-crash-course
 cd "$HOME/ncshare-crash-course"
 ```
+
+These commands run on the NCShare login node. `cd` changes directory and
+`git clone` downloads a working copy of the course files. Replace the
+placeholder URL with the address published by the instructor; do not type the
+angle brackets literally.
 
 If the repository has already been cloned, use `git pull --ff-only` instead.
 
