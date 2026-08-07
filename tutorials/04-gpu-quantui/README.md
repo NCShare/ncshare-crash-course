@@ -1,6 +1,6 @@
 # Tutorial: Run a containerized Python application on a GPU
 
-**Guided time:** 45 minutes  
+**Guided time:** 60 minutes (45 min GPU hands-on plus the CPU/GPU comparison)  
 **Application:** [The-Schultz-Lab/QuantUI](https://github.com/The-Schultz-Lab/QuantUI)  
 **Concepts:** Python environment design, container provenance, CUDA user-space
 libraries, GPU allocation, `--nv`, application-level offload evidence, and
@@ -20,6 +20,23 @@ built. Students inspect that environment rather than creating slightly
 different conda environments in every home directory. At runtime, Slurm grants
 one H200 and Apptainer's `--nv` flag exposes the host NVIDIA driver/devices to
 the image.
+
+## The hardware you are actually using
+
+NCShare's GPU tier is four nodes, each with **eight NVIDIA H200 SXM (141 GB
+HBM3e)** and roughly 96 physical CPU cores plus 2 TB of RAM — 32 H200s in
+total. That works out to about 12 CPU cores per GPU, which is why the batch
+job below asks for four.
+
+Two consequences worth noting before you start:
+
+- The H200 is compute capability **9.0** (Hopper). Both `gpu4pyscf-cuda12x`
+  and `cupy-cuda12x` ship prebuilt wheels for it, so nothing has to be
+  compiled against a local CUDA toolkit at image-build time.
+- The image carries its own complete CUDA 12.8 user-space. Only the driver
+  libraries come from the host through `--nv`, and the CUDA driver API is
+  backward compatible — which is why a `cuda12x` build keeps working when
+  the cluster's driver is upgraded.
 
 We use a tiny water RHF/STO-3G calculation. The chemistry is context; the goal
 is to prove that scheduler request, host driver, container environment, and
@@ -122,7 +139,7 @@ does not receive a GPU, `--nv` cannot create one.
 Request one short GPU allocation:
 
 ```bash
-srun -p interactive-gpu \
+srun -p workshop \
   --gres=gpu:h200:1 \
   --time=00:10:00 \
   --cpus-per-task=4 \
@@ -131,7 +148,7 @@ srun -p interactive-gpu \
 ```
 
 This is one command split across lines with backslashes. It requests the
-`interactive-gpu` partition, one H200, ten minutes, four CPU cores, 16 GB of
+`workshop` partition, one H200, ten minutes, four CPU cores, 16 GB of
 host memory, and an interactive Bash shell. GPU jobs still need CPU cores and
 RAM to prepare inputs, launch kernels, and handle results. The request may
 remain pending until a suitable node is free.
@@ -222,16 +239,105 @@ Expected fields include:
 }
 ```
 
-This molecule is too small for a meaningful speed benchmark. The defensible
-claim is that the calculation used QuantUI's supported GPU-offload path—not
-that it was faster than a CPU calculation.
-
 The other fields need context too: `converged` means the iterative
 self-consistent-field procedure reached its stopping criterion; `RHF` names
 the electronic-structure method; and `STO-3G` names the intentionally small
 basis set. They demonstrate a workflow, not a research-quality calculation.
 
-## 40-45 min — Explain and improve the design
+This tells you the calculation followed QuantUI's supported GPU-offload
+path. It does **not** tell you the GPU was faster—water/STO-3G is far too
+small for that. The next section measures that question directly.
+
+## 40-52 min — Find the crossover
+
+A GPU is not simply "faster". Every offloaded calculation pays a fixed cost:
+launching kernels and moving data between host and device. For a small
+system that overhead dominates the actual arithmetic, so **the CPU wins**. As
+the basis set grows, integral and Fock construction grow faster than the
+overhead, and at some point **the GPU wins**. Where that crossover sits
+depends on the molecule, basis, method, and the specific hardware.
+
+Measure it rather than assuming it:
+
+```bash
+cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
+
+for p in small medium crossover large; do
+  apptainer exec --nv --cleanenv \
+    --bind "$COURSE_WORK:$COURSE_WORK" \
+    --env "COURSE_WORK=$COURSE_WORK" \
+    --env "OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK" \
+    "$COURSE_IMAGE" \
+    python run_cpu_gpu_comparison.py --preset "$p"
+done
+```
+
+### What this looked like on NCShare
+
+Measured 2026-08-05 on `compute-gpu-02` (H200, driver 580.126.20), **1 GPU
+against 6 affinity-confirmed CPU cores**:
+
+| System | GPU | CPU | Ratio |
+|---|---:|---:|---|
+| H2O / STO-3G | 1.80 s | 0.35 s | 0.20x |
+| H2O / cc-pVDZ | 2.72 s | 0.48 s | 0.18x |
+| C6H6 / 6-31G | 2.69 s | 0.77 s | 0.29x |
+| C6H6 / cc-pVDZ | 2.86 s | 2.74 s | **0.96x — the crossover** |
+| C6H6 / cc-pVTZ | 7.07 s | 42.41 s | **6.00x** |
+
+Look at the GPU column first. It barely moves — 1.80 s to 2.86 s — while the
+system grows by orders of magnitude in basis functions. That flat portion *is*
+the fixed overhead, visible rather than asserted. The CPU column meanwhile
+climbs steadily, and at cc-pVTZ it explodes to 42 s while the GPU reaches only
+7 s.
+
+> **Warning:** A speedup means nothing without the CPU allocation it was
+> measured against. These numbers are 1 GPU vs 6 cores. The node has ~12
+> physical cores per GPU, so a proportional-share comparison would show a
+> smaller factor and move the crossover to a larger basis. Always quote the
+> denominator.
+
+The script runs each leg in a separate process. That is a requirement, not a
+style choice: QuantUI caches its GPU probe on first use, so the CPU leg has
+to set `QUANTUI_DISABLE_GPU=1` *before* QuantUI or gpu4pyscf is imported.
+Forcing CPU inside a running interpreter would be silently ignored, and the
+"CPU" timing would really be a second GPU run.
+
+Both legs print a wall time and the total energy. Check that the energies
+agree to ~1e-6 Hartree: if the two devices disagree on the answer, the
+timing comparison is meaningless.
+
+Record your own numbers, which will differ — different allocation, different
+node load:
+
+| System | CPU (s) | GPU (s) | Ratio |
+|---|---:|---:|---|
+| H2O RHF/STO-3G | | | |
+| C6H6 RHF/6-31G | | | |
+| C6H6 RHF/cc-pVDZ | | | |
+| C6H6 RHF/cc-pVTZ | | | |
+
+Then discuss: at what point would it be worth requesting a GPU for your own
+work, and what would you have to measure to know?
+
+### A trap worth knowing about
+
+The script prints your CPU **affinity mask** alongside the core count, and
+warns if they disagree. That is not decoration. When these numbers were
+measured, `os.cpu_count()` reported **192** — every core on the node — while
+Slurm had granted **6**.
+
+That was safe only because Slurm used a *cpuset*, so the affinity mask also
+showed 6 and threading libraries saw the real allocation. Under a cgroup CPU
+*quota* instead, the mask would have reported 192, OpenMP would have spawned
+192 threads onto 6 cores' worth of time, and every CPU timing would have been
+inflated — making the GPU look better than it is.
+
+Same request, same `cpu_count()`, opposite consequences. Whenever you
+benchmark on a shared cluster, confirm what you were actually given rather
+than what the machine says it has.
+
+## 52-60 min — Explain and improve the design
 
 With a partner, answer:
 
@@ -241,6 +347,8 @@ With a partner, answer:
    job?
 4. What evidence would you retain with a published result?
 5. When must the definition/SIF be rebuilt rather than merely resubmitting?
+6. Your small system ran faster on the CPU. What would you tell a colleague
+   who says "we bought GPUs, so run everything on them"?
 
 For longer jobs on a preemptible GPU partition, checkpoint application state.
 Do not run CPU-only installation, visualization, or data preparation on a GPU.

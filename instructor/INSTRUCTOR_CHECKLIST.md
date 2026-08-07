@@ -17,8 +17,9 @@ workflow is optional bonus material for other clusters.
 
 - [ ] Review `containers/ncshare-science-course.def`, including base image,
   upstream licenses, pinned commits, package sources, and comments.
-- [ ] Confirm that the CUDA 12.8.1/Ubuntu 24.04 base remains appropriate for
-  the NCShare H200 driver.
+- [x] Confirm that the CUDA 12.8.1/Ubuntu 24.04 base remains appropriate for
+  the NCShare H200 driver. **Confirmed.** See the recorded values below;
+  re-verify these before each offering rather than assuming they still hold.
 - [ ] Build through the approved NCShare GitLab runner or in a CPU allocation;
   never start dozens of identical student builds.
 - [ ] Run `apptainer test` and `containers/verify_container.sh IMAGE cpu`.
@@ -32,6 +33,48 @@ workflow is optional bonus material for other clusters.
   compute/Open OnDemand node can read it.
 - [ ] Publish the checksum and image path before participants begin.
 
+## Recorded NCShare hardware
+
+Observed values, not assumptions. Re-capture these before each offering — a
+driver upgrade or a MIG reconfiguration changes what the GPU lab does.
+
+| Fact | Value | Why it matters |
+|---|---|---|
+| GPU nodes | 4, each with 8x NVIDIA H200 SXM 141 GB (32 total) | Ample for a ~10-person class; GPU contention is not a scheduling risk |
+| GPU node CPU/RAM | Intel Xeon Platinum 8568Y+, ~96 physical cores, 2 TB RAM | ~12 cores per GPU, so `--cpus-per-task=4` is comfortable |
+| Compute capability | 9.0 (Hopper) | Covered by prebuilt `cuda12x` wheels; no local `nvcc` needed |
+| CPU nodes | 8x AMD EPYC 7543, ~64 physical cores, 512 GB RAM each | Sizing for the MPI lab |
+| Interconnect | **10/40 Gbps Ethernet, not InfiniBand** | Keep inoisy+ single-node; see the MPI warning below |
+| Storage | 400 TB FreeNAS NFS | Avoid many-small-file I/O patterns |
+| Driver | **580.126.20** (measured 2026-08-05) | CuPy reports driver API 13000 against runtime 12090 — works, and confirms the `cuda12x` choice |
+| GPU memory | 143771 MiB | Verification molecules use a tiny fraction |
+| Verified node / partition | `compute-gpu-02` / partition `gpu` | Partition confirmed working for interactive `salloc` |
+
+- [x] Capture `nvidia-smi` and record the driver version. **Done:** 580.126.20,
+  compute capability 9.0, H200 143771 MiB.
+- [ ] Confirm MIG mode with `nvidia-smi -L` (whole-GPU allocation worked, so
+  not blocking).
+- [ ] Record the Apptainer version and whether `--nv` uses the legacy
+  `nvliblist.conf` path or `--nvccli` / `nvidia-container-cli`.
+- [ ] **Confirm the `--gres` type string via an actual `sbatch`.** Interactive
+  `salloc` on partition `gpu` is proven; batch submission with
+  `--gres=gpu:h200:1` is not yet exercised. `gpu:1` is the fallback.
+- [ ] Confirm whether the workshop-day reservation supersedes partition `gpu`,
+  then make every `.sbatch` file agree.
+
+**GPU path verified end to end on 2026-08-05.** QuantUI's standalone GPU image
+(v0.6.1) passed all seven checks on an NCShare H200 — device visible through
+`--nv`, CuPy/driver ABI match, `gpu_used: true`, and the `QUANTUI_DISABLE_GPU`
+negative control flipping correctly. The same ladder should be re-run against
+the combined course SIF once it exists; see
+[QuantUI `apptainer/verify-gpu.sh`](https://github.com/The-Schultz-Lab/QuantUI).
+
+**On CUDA versions:** the image pins `cuda12x` wheels deliberately. CUDA's
+driver API is backward compatible, so `cuda12x` runs on both the older 570.x
+driver line and a 580+/CUDA 13 driver, whereas `cuda13x` requires >= 580 and
+would fail on 570.x. `cuda12x` also matches the image's CUDA 12.8.1 base.
+Do not "upgrade" to `cuda13x` without confirming every GPU node's driver.
+
 ## Validate both scientific workflows
 
 - [ ] Submit the one-rank and four-rank inoisy+ jobs from the staged SIF.
@@ -39,7 +82,9 @@ workflow is optional bonus material for other clusters.
   `(16, 16, 16, 16)`.
 - [ ] Confirm the MPI launch pattern matches current NCShare guidance. Do not
   extend the class example to multiple nodes without administrator validation
-  of host/container MPI compatibility.
+  of host/container MPI compatibility. **NCShare's interconnect is 10/40 Gbps
+  Ethernet, not InfiniBand**, so multi-node MPI would be latency-bound even if
+  it worked; keep every rank on one node and say why in class.
 - [ ] Submit the QuantUI job and verify the JSON result contains
   `"gpu_used": true`.
 - [ ] Confirm every GPU invocation includes both a Slurm GPU request and
