@@ -317,8 +317,7 @@ def add_schedule_table(doc):
         ("1:00-1:30", "Session 3A: Apptainer blueprint", "Inspected definition and SIF"),
         ("1:30-2:15", "Session 3B: inoisy+ on CPUs", "One-rank/four-rank HDF5 results"),
         ("2:15-2:30", "Break", ""),
-        ("2:30-3:15", "Session 3C: QuantUI on GPU", "Verified GPU-offload result"),
-        ("3:15-3:30", "CPU/GPU comparison", "Resource/environment boundary"),
+        ("2:30-3:30", "Session 3C: QuantUI on GPU", "Verified GPU-offload result plus a measured CPU/GPU crossover"),
         ("3:30-4:30", "Session 4: visualization", "Post-processed figure and notebook"),
         ("4:30-5:00", "Wrap-up", "Support path and next steps"),
     ]
@@ -558,21 +557,17 @@ def build():
     ):
         add_bullet(doc, item, bullet_num)
 
-    add_heading(doc, "2:30-3:15 • QuantUI on an H200 GPU", 2)
+    add_heading(doc, "2:30-3:30 • QuantUI on an H200 GPU, and when a GPU is worth it", 2)
     for item in (
-        "Inspect the SIF's Python 3.11 environment, package manifests, and QuantUI commit.",
+        "Inspect the SIF's Python 3.11 environment, package manifests, and QuantUI version.",
         "Separate Slurm's H200 allocation from Apptainer's --nv device exposure.",
         "Verify the device/environment and submit a small RHF calculation.",
         "Confirm QuantUI reports gpu_used=true; do not infer use from allocation alone.",
+        "Time the same calculation on CPU and GPU across growing basis sets.",
+        "Locate the crossover: overhead dominates small systems, arithmetic wins at scale.",
+        "State why a speedup without its CPU allocation is not a result.",
     ):
         add_bullet(doc, item, bullet_num)
-
-    add_heading(doc, "3:15-3:30 • CPU/GPU comparison", 2)
-    add_body(
-        doc,
-        "Compare the Slurm files, identify what the shared image does and does not "
-        "control, and record one resource change before scaling.",
-    )
     add_callout(
         doc,
         "Provided",

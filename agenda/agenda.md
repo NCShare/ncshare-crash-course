@@ -31,7 +31,10 @@ By the end of the workshop, participants can:
   QuantUI, and Jupyter were packaged and tested;
 - submit, monitor, diagnose, and cancel Slurm jobs;
 - run the same MPI application with one and four ranks, then run one GPU
-  workflow with reasonable resources; and
+  workflow with reasonable resources;
+- measure the same calculation on CPU and GPU, locate the crossover where the
+  GPU starts to win, and explain why a speedup is meaningless without the CPU
+  allocation it was measured against; and
 - inspect HDF5 output, post-process a Gaussian random field, and make an
   accessible scientific figure.
 
@@ -112,16 +115,21 @@ timing, and diagnose Slurm → Apptainer → application layers.
 
 **2:15-2:30 — Break**
 
-**2:30-3:15 — GPU hands-on: QuantUI**
+**2:30-3:30 — GPU hands-on: QuantUI, and when a GPU is worth it**
 
 Inspect the Python environment and CUDA-specific wheels recorded in the SIF,
 separate Slurm's GPU allocation from Apptainer's `--nv` exposure, submit a
-small RHF calculation, and confirm `gpu_used=true` in the result.
+small RHF calculation, and confirm `gpu_used=true` in the result — three
+independent mechanisms that must all agree before an offloaded calculation is
+real.
 
-**3:15-3:30 — CPU/GPU comparison**
-
-Compare the CPU and GPU Slurm files, identify what the shared image does and
-does not control, and record one resource change before scaling.
+Then measure the question that actually matters. Run the same calculation on
+CPU and GPU across a series of growing basis sets and find the **crossover**:
+small systems run faster on the CPU because kernel-launch and transfer
+overhead dominates the arithmetic, while larger ones tip decisively to the
+GPU. Participants record their own timings, compare results across different
+CPU allocations, and leave able to state why a speedup quoted without its CPU
+denominator is not a result.
 
 **Provided:** commented Apptainer definition, build/test/CI blueprints, image
 checksum, one-rank/four-rank/GPU Slurm files, low-resolution settings,
