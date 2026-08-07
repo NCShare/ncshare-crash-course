@@ -191,20 +191,40 @@ Measure it rather than assuming it:
 ```bash
 cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
 
-# Small system: expect the CPU to win
-apptainer exec --nv --cleanenv \
-  --bind "$COURSE_WORK:$COURSE_WORK" \
-  --env "COURSE_WORK=$COURSE_WORK" \
-  "$COURSE_IMAGE" \
-  python run_cpu_gpu_comparison.py --preset small
-
-# Larger system: expect the GPU to win
-apptainer exec --nv --cleanenv \
-  --bind "$COURSE_WORK:$COURSE_WORK" \
-  --env "COURSE_WORK=$COURSE_WORK" \
-  "$COURSE_IMAGE" \
-  python run_cpu_gpu_comparison.py --preset large
+for p in small medium crossover large; do
+  apptainer exec --nv --cleanenv \
+    --bind "$COURSE_WORK:$COURSE_WORK" \
+    --env "COURSE_WORK=$COURSE_WORK" \
+    --env "OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK" \
+    "$COURSE_IMAGE" \
+    python run_cpu_gpu_comparison.py --preset "$p"
+done
 ```
+
+### What this looked like on NCShare
+
+Measured 2026-08-05 on `compute-gpu-02` (H200, driver 580.126.20), **1 GPU
+against 6 affinity-confirmed CPU cores**:
+
+| System | GPU | CPU | Ratio |
+|---|---:|---:|---|
+| H2O / STO-3G | 1.80 s | 0.35 s | 0.20x |
+| H2O / cc-pVDZ | 2.72 s | 0.48 s | 0.18x |
+| C6H6 / 6-31G | 2.69 s | 0.77 s | 0.29x |
+| C6H6 / cc-pVDZ | 2.86 s | 2.74 s | **0.96x — the crossover** |
+| C6H6 / cc-pVTZ | 7.07 s | 42.41 s | **6.00x** |
+
+Look at the GPU column first. It barely moves — 1.80 s to 2.86 s — while the
+system grows by orders of magnitude in basis functions. That flat portion *is*
+the fixed overhead, visible rather than asserted. The CPU column meanwhile
+climbs steadily, and at cc-pVTZ it explodes to 42 s while the GPU reaches only
+7 s.
+
+> **Warning:** A speedup means nothing without the CPU allocation it was
+> measured against. These numbers are 1 GPU vs 6 cores. The node has ~12
+> physical cores per GPU, so a proportional-share comparison would show a
+> smaller factor and move the crossover to a larger basis. Always quote the
+> denominator.
 
 The script runs each leg in a separate process. That is a requirement, not a
 style choice: QuantUI caches its GPU probe on first use, so the CPU leg has
@@ -216,15 +236,35 @@ Both legs print a wall time and the total energy. Check that the energies
 agree to ~1e-6 Hartree: if the two devices disagree on the answer, the
 timing comparison is meaningless.
 
-Record your numbers:
+Record your own numbers, which will differ — different allocation, different
+node load:
 
-| System | CPU (s) | GPU (s) | Faster |
+| System | CPU (s) | GPU (s) | Ratio |
 |---|---:|---:|---|
 | H2O RHF/STO-3G | | | |
+| C6H6 RHF/6-31G | | | |
 | C6H6 RHF/cc-pVDZ | | | |
+| C6H6 RHF/cc-pVTZ | | | |
 
 Then discuss: at what point would it be worth requesting a GPU for your own
 work, and what would you have to measure to know?
+
+### A trap worth knowing about
+
+The script prints your CPU **affinity mask** alongside the core count, and
+warns if they disagree. That is not decoration. When these numbers were
+measured, `os.cpu_count()` reported **192** — every core on the node — while
+Slurm had granted **6**.
+
+That was safe only because Slurm used a *cpuset*, so the affinity mask also
+showed 6 and threading libraries saw the real allocation. Under a cgroup CPU
+*quota* instead, the mask would have reported 192, OpenMP would have spawned
+192 threads onto 6 cores' worth of time, and every CPU timing would have been
+inflated — making the GPU look better than it is.
+
+Same request, same `cpu_count()`, opposite consequences. Whenever you
+benchmark on a shared cluster, confirm what you were actually given rather
+than what the machine says it has.
 
 ## 52-60 min — Explain and improve the design
 

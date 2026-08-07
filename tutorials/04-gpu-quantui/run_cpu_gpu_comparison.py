@@ -14,8 +14,9 @@ This mirrors what ``quantui.benchmarks`` does internally.
 
 Usage:
     python run_cpu_gpu_comparison.py --preset small
+    python run_cpu_gpu_comparison.py --preset crossover
     python run_cpu_gpu_comparison.py --preset large
-    python run_cpu_gpu_comparison.py --preset small --preset-large-basis 6-31G*
+    python run_cpu_gpu_comparison.py --preset small --basis cc-pVDZ
 """
 
 from __future__ import annotations
@@ -28,44 +29,67 @@ import sys
 import time
 from pathlib import Path
 
-# Two contrasting systems. "small" should favour the CPU; "large" is the
-# candidate for showing a GPU win. The exact crossover depends on the
-# molecule, basis, method and hardware, so treat these as starting points
-# and re-measure on the target GPU before teaching from them.
+# Measured on an NCShare H200 (driver 580.126.20, compute-gpu-02) on
+# 2026-08-05, 1 GPU against 6 affinity-confirmed CPU cores:
+#
+#   H2O  / STO-3G    GPU 1.80 s   CPU  0.35 s   0.20x
+#   H2O  / cc-pVDZ   GPU 2.72 s   CPU  0.48 s   0.18x
+#   C6H6 / 6-31G     GPU 2.69 s   CPU  0.77 s   0.29x
+#   C6H6 / cc-pVDZ   GPU 2.86 s   CPU  2.74 s   0.96x  <- the crossover
+#   C6H6 / cc-pVTZ   GPU 7.07 s   CPU 42.41 s   6.00x
+#
+# Note that the GPU wall time barely moves across the first four: that is
+# fixed launch and transfer overhead, and it is the whole point of the
+# exercise. Only cc-pVTZ makes the arithmetic large enough for the device
+# to win. "crossover" below is a near-tie by design -- it is where the two
+# curves cross, not a GPU victory.
+_BENZENE = (
+    ["C"] * 6 + ["H"] * 6,
+    [
+        [0.0000, 1.3970, 0.0000],
+        [1.2098, 0.6985, 0.0000],
+        [1.2098, -0.6985, 0.0000],
+        [0.0000, -1.3970, 0.0000],
+        [-1.2098, -0.6985, 0.0000],
+        [-1.2098, 0.6985, 0.0000],
+        [0.0000, 2.4810, 0.0000],
+        [2.1486, 1.2405, 0.0000],
+        [2.1486, -1.2405, 0.0000],
+        [0.0000, -2.4810, 0.0000],
+        [-2.1486, -1.2405, 0.0000],
+        [-2.1486, 1.2405, 0.0000],
+    ],
+)
+_WATER = (
+    ["O", "H", "H"],
+    [
+        [0.0000, 0.0000, 0.0000],
+        [0.7570, 0.5870, 0.0000],
+        [-0.7570, 0.5870, 0.0000],
+    ],
+)
+
+
+def _preset(label, geom, basis):
+    atoms, coords = geom
+    return {
+        "label": label,
+        "atoms": atoms,
+        "coordinates": coords,
+        "method": "RHF",
+        "basis": basis,
+    }
+
+
 PRESETS = {
-    "small": {
-        "label": "H2O  RHF/STO-3G",
-        "atoms": ["O", "H", "H"],
-        "coordinates": [
-            [0.0000, 0.0000, 0.0000],
-            [0.7570, 0.5870, 0.0000],
-            [-0.7570, 0.5870, 0.0000],
-        ],
-        "method": "RHF",
-        "basis": "STO-3G",
-    },
-    "large": {
-        # Benzene: enough basis functions at cc-pVDZ that the integral and
-        # Fock work should outweigh transfer overhead on an H200.
-        "label": "C6H6  RHF/cc-pVDZ",
-        "atoms": ["C"] * 6 + ["H"] * 6,
-        "coordinates": [
-            [0.0000, 1.3970, 0.0000],
-            [1.2098, 0.6985, 0.0000],
-            [1.2098, -0.6985, 0.0000],
-            [0.0000, -1.3970, 0.0000],
-            [-1.2098, -0.6985, 0.0000],
-            [-1.2098, 0.6985, 0.0000],
-            [0.0000, 2.4810, 0.0000],
-            [2.1486, 1.2405, 0.0000],
-            [2.1486, -1.2405, 0.0000],
-            [0.0000, -2.4810, 0.0000],
-            [-2.1486, -1.2405, 0.0000],
-            [-2.1486, 1.2405, 0.0000],
-        ],
-        "method": "RHF",
-        "basis": "cc-pVDZ",
-    },
+    # CPU wins comfortably -- overhead dominates.
+    "small": _preset("H2O  RHF/STO-3G", _WATER, "STO-3G"),
+    # Still CPU, but the gap has narrowed.
+    "medium": _preset("C6H6  RHF/6-31G", _BENZENE, "6-31G"),
+    # Near-tie: this is the crossover, not a GPU win.
+    "crossover": _preset("C6H6  RHF/cc-pVDZ", _BENZENE, "cc-pVDZ"),
+    # GPU wins decisively.
+    "large": _preset("C6H6  RHF/cc-pVTZ", _BENZENE, "cc-pVTZ"),
 }
 
 
@@ -168,14 +192,34 @@ def main() -> None:
     speedup = cpu["elapsed_seconds"] / gpu["elapsed_seconds"]
     faster = "GPU" if speedup > 1 else "CPU"
 
+    # A speedup is meaningless without the CPU allocation it was measured
+    # against, so print the allocation next to the number every time.
+    cores = os.environ.get("SLURM_CPUS_PER_TASK", "?")
+    try:
+        affinity = len(os.sched_getaffinity(0))  # type: ignore[attr-defined]
+    except AttributeError:  # not available on Windows
+        affinity = None
+
     print("\n" + "=" * 60)
     print(f"  System        : {spec['label']}")
     print(f"  GPU device    : {gpu['gpu_name'] or 'n/a'}")
+    print(f"  CPU allocation: {cores} core(s) requested"
+          + (f", affinity mask shows {affinity}" if affinity is not None else ""))
     print(f"  CPU wall time : {cpu['elapsed_seconds']:.2f} s")
     print(f"  GPU wall time : {gpu['elapsed_seconds']:.2f} s")
     print(f"  Ratio         : {speedup:.2f}x  ({faster} faster)")
     print(f"  Energies agree: {abs(cpu['energy_hartree'] - gpu['energy_hartree']) < 1e-6}")
     print("=" * 60)
+
+    # os.cpu_count() would report every core on the node, not the ones Slurm
+    # granted. If the affinity mask disagrees with the request, OpenMP may
+    # have oversubscribed and the CPU timing above is not trustworthy.
+    if affinity is not None and cores != "?" and str(affinity) != cores:
+        print(
+            f"\nWARNING: requested {cores} cores but the affinity mask shows "
+            f"{affinity}. The CPU leg may have been over- or under-subscribed, "
+            "which distorts the ratio. Treat these timings as indicative only."
+        )
 
     payload = {
         "system": spec["label"],
@@ -185,6 +229,8 @@ def main() -> None:
         "gpu": gpu,
         "cpu_over_gpu": speedup,
         "faster": faster,
+        "cpus_requested": cores,
+        "cpu_affinity": affinity,
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
     }
     course_work = Path(

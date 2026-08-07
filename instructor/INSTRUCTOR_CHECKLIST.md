@@ -46,15 +46,28 @@ driver upgrade or a MIG reconfiguration changes what the GPU lab does.
 | CPU nodes | 8x AMD EPYC 7543, ~64 physical cores, 512 GB RAM each | Sizing for the MPI lab |
 | Interconnect | **10/40 Gbps Ethernet, not InfiniBand** | Keep inoisy+ single-node; see the MPI warning below |
 | Storage | 400 TB FreeNAS NFS | Avoid many-small-file I/O patterns |
-| Driver / CUDA | Recently upgraded; capture `nvidia-smi` output at build time | Does not change the wheel choice — see below |
-| MIG mode | Not confirmed | If enabled, `--gres=gpu:h200:1` yields a slice, changing what students see in `nvidia-smi` |
+| Driver | **580.126.20** (measured 2026-08-05) | CuPy reports driver API 13000 against runtime 12090 — works, and confirms the `cuda12x` choice |
+| GPU memory | 143771 MiB | Verification molecules use a tiny fraction |
+| Verified node / partition | `compute-gpu-02` / partition `gpu` | Partition confirmed working for interactive `salloc` |
 
-- [ ] Capture current `nvidia-smi` output and record the driver version here.
-- [ ] Confirm MIG mode with `nvidia-smi -L`.
+- [x] Capture `nvidia-smi` and record the driver version. **Done:** 580.126.20,
+  compute capability 9.0, H200 143771 MiB.
+- [ ] Confirm MIG mode with `nvidia-smi -L` (whole-GPU allocation worked, so
+  not blocking).
 - [ ] Record the Apptainer version and whether `--nv` uses the legacy
   `nvliblist.conf` path or `--nvccli` / `nvidia-container-cli`.
-- [ ] Confirm the exact partition name and `--gres` type string, then make
-  every `.sbatch` file agree with it.
+- [ ] **Confirm the `--gres` type string via an actual `sbatch`.** Interactive
+  `salloc` on partition `gpu` is proven; batch submission with
+  `--gres=gpu:h200:1` is not yet exercised. `gpu:1` is the fallback.
+- [ ] Confirm whether the workshop-day reservation supersedes partition `gpu`,
+  then make every `.sbatch` file agree.
+
+**GPU path verified end to end on 2026-08-05.** QuantUI's standalone GPU image
+(v0.6.1) passed all seven checks on an NCShare H200 — device visible through
+`--nv`, CuPy/driver ABI match, `gpu_used: true`, and the `QUANTUI_DISABLE_GPU`
+negative control flipping correctly. The same ladder should be re-run against
+the combined course SIF once it exists; see
+[QuantUI `apptainer/verify-gpu.sh`](https://github.com/The-Schultz-Lab/QuantUI).
 
 **On CUDA versions:** the image pins `cuda12x` wheels deliberately. CUDA's
 driver API is backward compatible, so `cuda12x` runs on both the older 570.x
