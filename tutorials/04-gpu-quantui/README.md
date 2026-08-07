@@ -42,6 +42,20 @@ We use a tiny water RHF/STO-3G calculation. The chemistry is context; the goal
 is to prove that scheduler request, host driver, container environment, and
 QuantUI all agree about GPU use.
 
+## The four layers involved
+
+A GPU application crosses several boundaries:
+
+```text
+Slurm allocation → physical H200 and host driver → Apptainer --nv
+                 → CUDA/Python packages in the SIF → QuantUI calculation
+```
+
+Slurm grants access to hardware. The NCShare host supplies the kernel-level
+NVIDIA driver. Apptainer's `--nv` option exposes that driver and the allocated
+device inside the container. CUDA-aware Python packages inside the SIF can then
+use the device. A check at each layer makes failures easier to locate.
+
 ## Before the clock starts
 
 - Complete [pre-workshop setup](../00-prework.md).
@@ -56,6 +70,9 @@ export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-c
 mkdir -p "$COURSE_WORK"/{logs,quantui}
 ```
 
+As in the CPU lab, these variables name the repository, mutable workspace, and
+read-only image. The braces create separate `logs` and `quantui` directories.
+
 ## 0-8 min — Inspect the Python environment
 
 ```bash
@@ -69,6 +86,22 @@ apptainer exec "$COURSE_IMAGE" \
 apptainer exec "$COURSE_IMAGE" \
   grep -E 'gpu4pyscf|cupy|cutensor' /opt/course-build/pip-freeze.txt
 ```
+
+All five commands execute inside the image:
+
+- `python --version` confirms the interpreter version;
+- `python -c "..."` runs a short Python statement without creating a script;
+  it imports QuantUI and PySCF and prints where/version information;
+- `cat` prints the recorded QuantUI source commit;
+- `sed -n '1,80p'` prints the first 80 lines of the resolved conda package
+  manifest; and
+- `grep -E` searches the pip manifest for any of three GPU package names. The
+  `|` characters inside the quoted regular expression mean “or”; they are not
+  shell pipes in this command.
+
+The manifests describe the packages actually resolved during the build. The
+definition file describes what the builder requested. Retaining both helps
+explain why an image built months later might differ.
 
 Then locate the environment-creation block in
 [`ncshare-science-course.def`](../../containers/ncshare-science-course.def).
@@ -97,6 +130,10 @@ device is visible; `quantui gpu check` proves the environment supports offload;
 the calculation result's `gpu_used` field proves this supported calculation
 actually followed QuantUI's offload path.
 
+`#SBATCH` lines are directives inside a batch file; they are not typed directly
+at the shell. `--gres` means generic resource and requests one H200. If the job
+does not receive a GPU, `--nv` cannot create one.
+
 ## 15-22 min — Verify interactively
 
 Request one short GPU allocation:
@@ -110,6 +147,12 @@ srun -p workshop \
   --pty bash -l
 ```
 
+This is one command split across lines with backslashes. It requests the
+`workshop` partition, one H200, ten minutes, four CPU cores, 16 GB of
+host memory, and an interactive Bash shell. GPU jobs still need CPU cores and
+RAM to prepare inputs, launch kernels, and handle results. The request may
+remain pending until a suitable node is free.
+
 Inside it:
 
 ```bash
@@ -119,6 +162,11 @@ bash "$COURSE_ROOT/containers/verify_container.sh" \
   "$COURSE_IMAGE" gpu
 exit
 ```
+
+The verification script first runs the image's normal tests. In `gpu` mode it
+also confirms that the command is inside a Slurm allocation, runs
+`nvidia-smi` through `apptainer exec --nv`, and asks QuantUI to check its GPU
+environment. `exit` releases the interactive allocation.
 
 The CPU verification path does not use `--nv`; the GPU path does. This lets one
 image serve both workflows without reserving a GPU for CPU-only work.
@@ -138,6 +186,13 @@ its responsibility:
 The job requests one GPU because this example uses one. More GPUs would not
 make this script multi-GPU.
 
+The Python program [`run_quantui_gpu.py`](run_quantui_gpu.py) creates a
+water molecule, calls QuantUI's `run_in_session` API with the RHF method and
+STO-3G basis, and writes a JSON result. JSON is a text format of named values;
+it is useful here because people and programs can both inspect it. The script
+exits with an error if the calculation did not converge or if QuantUI reports
+that GPU offload was not used.
+
 ## 28-33 min — Submit
 
 ```bash
@@ -145,6 +200,11 @@ cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
 sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
   slurm/quantui_gpu.sbatch
 ```
+
+`sbatch` submits the file to Slurm and prints a job ID. `--export` passes the
+current variables and explicitly supplies the image path. The shell script
+will run later on the assigned GPU node; closing the terminal after submission
+does not cancel the batch job.
 
 Record the job ID.
 
@@ -162,6 +222,12 @@ apptainer exec \
   "$COURSE_WORK/quantui/quantui_gpu_result.json"
 ```
 
+Replace `JOB_ID` with the number returned by `sbatch`. The `squeue` format is
+the same one decoded in the CPU tutorial: job ID, state, elapsed time, node
+count, and assigned node or pending reason. `sacct` reports the final state,
+resources, and exit code. `python -m json.tool FILE` parses and pretty-prints
+the result, which also verifies that it is valid JSON.
+
 Expected fields include:
 
 ```json
@@ -172,6 +238,11 @@ Expected fields include:
   "basis": "STO-3G"
 }
 ```
+
+The other fields need context too: `converged` means the iterative
+self-consistent-field procedure reached its stopping criterion; `RHF` names
+the electronic-structure method; and `STO-3G` names the intentionally small
+basis set. They demonstrate a workflow, not a research-quality calculation.
 
 This tells you the calculation followed QuantUI's supported GPU-offload
 path. It does **not** tell you the GPU was faster—water/STO-3G is far too

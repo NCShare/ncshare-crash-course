@@ -24,6 +24,25 @@ when the image is created, not once per user or job.
 context rather than the learning objective. We run the same tiny global grid
 with one and four MPI ranks and retain HDF5 results for the visualization lab.
 
+## How the program reaches a compute node
+
+The application does not run when you read this page or edit the Slurm file.
+The sequence is:
+
+```text
+login-node shell
+  → sbatch sends a job description to Slurm
+  → Slurm assigns one compute node and the requested CPU/memory/time
+  → the job starts Apptainer on that node
+  → Apptainer starts the image's MPI launcher
+  → MPI starts one or four copies (ranks) of inoisy4d
+  → the ranks write HDF5 output through a bind mount to /work/$USER
+```
+
+An **MPI rank** is one process participating in a parallel MPI program. Four
+ranks are four cooperating processes; they are not four separate Slurm jobs.
+The Slurm request, MPI rank count, and application's processor grid must agree.
+
 ## Before the clock starts
 
 - Complete [pre-workshop setup](../00-prework.md).
@@ -40,6 +59,12 @@ export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-c
 mkdir -p "$COURSE_WORK"/{logs,inoisy}
 ```
 
+These exported variables give short, consistent names to the repository,
+active workspace, and SIF. `${NAME:-default}` means “use the current value of
+`NAME` if it exists; otherwise use this default.” This lets an instructor
+override a path without editing every command. `mkdir -p` creates the log and
+result directories before Slurm tries to use them.
+
 ## 0-8 min — Inspect the application environment
 
 The SIF is read-only. Explore it without installing anything:
@@ -53,6 +78,19 @@ apptainer exec "$COURSE_IMAGE" h5pcc.openmpi -showconfig \
 apptainer exec "$COURSE_IMAGE" cat /opt/course-build/inoisy4d-commit.txt
 ```
 
+Read these as `apptainer exec IMAGE COMMAND [OPTIONS]`:
+
+- `which inoisy4d` reports the executable selected from the image's `PATH`;
+- `mpirun --version` identifies the packaged MPI implementation;
+- `h5pcc.openmpi -showconfig` prints the parallel HDF5 build configuration;
+- the pipe sends that text to `grep -i`, which selects lines containing
+  “Parallel HDF5” without regard to capitalization; and
+- `cat` prints the recorded Git commit for the inoisy4d source used in this
+  particular SIF.
+
+These checks answer different questions. Finding an executable does not prove
+which source revision or HDF5 configuration created it.
+
 Inspect the upstream source and Makefile stored in the image:
 
 ```bash
@@ -61,6 +99,12 @@ apptainer exec "$COURSE_IMAGE" \
 apptainer exec "$COURSE_IMAGE" \
   sed -n '110,190p' /opt/inoisy4d/README.md
 ```
+
+The backslash `\` continues one shell command onto the next display line.
+`sed -n '1,100p' FILE` prints only lines 1–100; the second command prints lines
+110–190. This is a way to inspect selected portions of source documentation
+without opening an editor. The files are read from `/opt/inoisy4d` inside the
+image.
 
 Notice the difference between inspecting a build and modifying it. To change a
 dependency or source commit, edit the definition and build a **new** SIF; do
@@ -77,6 +121,11 @@ apptainer exec \
   "$COURSE_IMAGE" \
   ls -ld "$COURSE_WORK"
 ```
+
+Each backslash means the command continues. `--bind HOST_PATH:CONTAINER_PATH`
+makes a host directory visible inside the container. This course uses the same
+path on both sides, which makes logs and scripts easier to interpret. The final
+`ls -ld` runs inside the image and proves that the directory is visible there.
 
 The same pathname is used on both sides of the bind. The executable and
 libraries come from the image; inputs and outputs remain in `/work/$USER`.
@@ -97,6 +146,19 @@ Both jobs:
 - start the MPI launcher **inside** the image, following NCShare's documented
   single-node container pattern; and
 - call the same unmodified executable.
+
+A Slurm batch file is a shell script. Lines beginning with `#SBATCH` are read
+by Slurm when `sbatch` submits the file; they request resources and name the
+log. Other `#` lines are ordinary comments, while the remaining commands run
+on the assigned compute node. In these files:
+
+- `--nodes=1` keeps all ranks on one machine;
+- `--ntasks` is the number of MPI ranks;
+- `--cpus-per-task=1` gives each rank one CPU core;
+- `--mem=4G` is memory for the whole job;
+- `--time=00:10:00` is a ten-minute limit, not an estimate; and
+- `%u`, `%x`, and `%j` in the output path become the username, job name, and
+  job ID.
 
 The global grid is fixed:
 
@@ -122,6 +184,13 @@ sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
   slurm/inoisy_four_ranks.sbatch
 ```
 
+`sbatch FILE` submits a batch script and returns immediately with a numeric job
+ID. It does not run the program in the login shell. `--export=ALL` passes the
+current environment variables to the job, and the comma-separated assignment
+explicitly passes `COURSE_IMAGE`. The trailing backslash only wraps this long
+command for readability. Save the two job IDs printed by `sbatch`; replace
+`JOB_ID` below with a real number, without typing the underscore placeholder.
+
 Record both job IDs.
 
 ## 28-35 min — Monitor and diagnose
@@ -132,6 +201,28 @@ squeue -j JOB_ID -o "%.18i %.9T %.10M %.6D %.30R"
 scontrol show job JOB_ID
 ```
 
+- `squeue -u "$USER"` lists all of your queued and running jobs.
+- `squeue -j JOB_ID` selects one job.
+- `-o` supplies a custom output format. The apparently cryptic string is a
+  compact set of column specifications:
+
+  | Code | Meaning | Width/style |
+  |---|---|---|
+  | `%.18i` | job ID | right-aligned in 18 characters |
+  | `%.9T` | full job state | right-aligned in 9 characters |
+  | `%.10M` | elapsed time | right-aligned in 10 characters |
+  | `%.6D` | node count | right-aligned in 6 characters |
+  | `%.30R` | assigned nodes or pending reason | right-aligned in 30 characters |
+
+  The leading dot requests right alignment; the number is the column width.
+  This formatting changes only what `squeue` displays, not the job.
+- `scontrol show job JOB_ID` prints the scheduler's detailed record, including
+  requested resources and a pending reason when the job has not started.
+
+Common states are `PENDING` (waiting), `RUNNING`, `COMPLETED`, `FAILED`, and
+`CANCELLED`. A pending job is not necessarily broken; the `%R` column explains
+what it is waiting for.
+
 After completion:
 
 ```bash
@@ -139,6 +230,13 @@ sacct -j JOB_ID --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode
 less "$COURSE_WORK/logs/inoisy-one-JOB_ID.out"
 less "$COURSE_WORK/logs/inoisy-four-JOB_ID.out"
 ```
+
+`sacct` reads accounting information for current or completed jobs. Its
+`--format` value is a comma-separated list of columns: job ID, final state,
+elapsed time, allocated CPUs, peak resident memory, and exit status. An exit
+code of `0:0` normally indicates that the batch script and its Slurm step
+exited successfully. `less` opens each text log; press `/` to search and `q` to
+quit. Substitute the actual job ID in each filename.
 
 Separate three failure layers:
 
@@ -163,6 +261,17 @@ apptainer exec \
     "$COURSE_WORK"/inoisy/four-ranks/*.h5
 ```
 
+The `find` command lists HDF5 files (`-name '*.h5'`) no more than two levels
+below the result directory; `-ls` includes size and ownership details. The
+inspection command binds both the repository (where the Python script lives)
+and workspace (where the HDF5 files live). The shell expands `*.h5` to matching
+filenames before Python starts.
+
+HDF5 is a structured binary format: one file can contain named groups,
+datasets, shapes, numeric types, and attributes. It is not meant to be opened
+with `less`. The provided Python script uses `h5py` to read the structure,
+metadata, and a small slice.
+
 Confirm that both files contain `/data/data_raw` with shape
 `(16, 16, 16, 16)`. The inspection script reads metadata and one slice rather
 than loading a production-scale four-dimensional array.
@@ -174,6 +283,11 @@ apptainer inspect "$COURSE_IMAGE" \
   | grep -E 'BaseImage|HYPREVersion|inoisy4dCommit|BlueprintVersion'
 cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
 ```
+
+`grep -E` selects any label matching the alternatives separated by `|`.
+`2>/dev/null` hides only the error message if a neighboring checksum file does
+not exist. `||` means “run the command on the right only if the command on the
+left failed,” so the image is checksummed directly as a fallback.
 
 Record the image path/checksum, definition version, job IDs, Slurm resources,
 command-line parameters, and output paths. The source commit alone is

@@ -114,8 +114,8 @@ Do not "upgrade" to `cuda13x` without confirming every GPU node's driver.
   project licenses and citations.
 - [ ] Replace the default `COURSE_IMAGE` path if the HPC team stages the SIF
   elsewhere.
-- [ ] Update the pinned source commits deliberately after rebuilding and
-  rerunning every smoke test.
+- [ ] Review the resolved inoisy4d commit and update pinned source commits
+  deliberately after rebuilding and rerunning every smoke test.
 
 ## One-sentence administrator role
 

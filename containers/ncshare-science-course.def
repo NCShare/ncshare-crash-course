@@ -13,7 +13,7 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
     Purpose "Containerized CPU, MPI, GPU, Jupyter, and post-processing course environment"
     BaseImage "nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04"
     HYPREVersion "3.1.0"
-    inoisy4dCommit "437973e6aa35228a0df08deea1b652bb85ae467e"
+    inoisy4dSelection "latest default branch at build time"
     QuantUIVersion "0.6.1"
     BlueprintVersion "1.0.0"
 
@@ -22,7 +22,8 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
 
     Included:
       - Open MPI, parallel HDF5, GSL, and HYPRE with maxdim=4
-      - unmodified inoisy4d built at a recorded Git commit
+      - unmodified inoisy4d built from the latest default branch available
+        when the image was built; the resolved commit is recorded in the image
       - Python 3.11, QuantUI, PySCF/gpu4pyscf, JupyterLab, h5py,
         NumPy, pandas, Matplotlib, and Seaborn
 
@@ -84,13 +85,20 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
     make -j"$(nproc)"
     make install
 
-    # ---- inoisy4d: compile the upstream source without editing it ----------
-    INOISY_COMMIT="437973e6aa35228a0df08deea1b652bb85ae467e"
-    git clone https://github.com/alejandroc137/inoisy4d.git /opt/inoisy4d
-    git -C /opt/inoisy4d checkout "${INOISY_COMMIT}"
+    # ---- inoisy4d: compile the latest upstream default branch --------------
+    # No source commit is selected here. Each image build downloads the latest
+    # default-branch revision available at that time, and the resolved commit
+    # is recorded below for provenance.
+    git clone --depth 1 \
+        https://github.com/alejandroc137/inoisy4d.git /opt/inoisy4d
     cd /opt/inoisy4d
     H5PCC="$(command -v h5pcc.openmpi || command -v h5pcc)"
-    make -j"$(nproc)" HYPRE_DIR=/opt/hypre CC="${H5PCC}"
+    # HYPRE 3.1.0's public SStruct header declares functions with FILE*
+    # parameters but does not include <stdio.h> itself. Force that standard
+    # header to be parsed first without changing either upstream source tree.
+    make -j"$(nproc)" \
+        HYPRE_DIR=/opt/hypre \
+        CC="${H5PCC} -include stdio.h"
 
     # ---- Isolated Python 3.11 environment ---------------------------------
     MINIFORGE_VERSION="25.3.0-3"
@@ -153,8 +161,9 @@ From: nvidia/cuda:12.8.1-cudnn-devel-ubuntu24.04
     git clone --depth 1 --branch "v${QUANTUI_VERSION}" \
         https://github.com/The-Schultz-Lab/QuantUI.git /opt/QuantUI
 
-    # Record the resolved packages inside the image. The definition records
-    # intent; these manifests record the exact result of this build.
+    # Record the resolved packages and source revisions inside the image. The
+    # inoisy4d entry identifies the exact revision selected by the latest-build
+    # policy, even though the definition intentionally does not pin it.
     mkdir -p /opt/course-build
     /opt/conda/bin/conda list -p /opt/course-env --explicit \
         > /opt/course-build/conda-explicit.txt

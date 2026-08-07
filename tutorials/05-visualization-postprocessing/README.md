@@ -22,6 +22,19 @@ standardizes that field and maps it to a positive lognormal disk-plus-jet
 emissivity. Only the minimum scientific context needed to understand the arrays
 is included.
 
+## Simulation, post-processing, and visualization
+
+These are separate stages even though they use one container:
+
+- the simulation produced the four-dimensional HDF5 field;
+- post-processing derives emissivity fields from that result; and
+- visualization selects a meaningful slice or summary and encodes it as a
+  figure.
+
+Keeping the stages separate avoids rerunning an expensive simulation merely to
+change a color map or figure label. It also makes the transformation from raw
+data to figure explicit.
+
 ## 1. Use the course image—do not create another environment
 
 ```bash
@@ -32,6 +45,11 @@ export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-c
 apptainer exec "$COURSE_IMAGE" python -c \
   "import h5py, matplotlib, numpy, pandas, seaborn; print('visualization stack OK')"
 ```
+
+The first three lines establish the same repository, workspace, and image paths
+used earlier. `python -c` asks the image's Python interpreter to run the quoted
+one-line program. If every import succeeds, it prints the confirmation. This
+is a quick environment check, not a test of the input dataset or notebook.
 
 The plotting stack is created in the same definition file as MPI, HYPRE,
 inoisy4d, and QuantUI. This avoids a hidden post-processing environment that
@@ -52,6 +70,11 @@ sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
   slurm/postprocess_emissivity.sbatch
 ```
 
+This submits a CPU batch job; post-processing does not need an H200. The job
+looks for the newest four-rank `.h5` result unless the caller supplies a
+`SOURCE_H5` variable. It stops with a clear error if no input exists rather
+than silently analyzing the fallback dataset.
+
 The job binds `/work/$USER` and calls the unmodified converter stored inside
 the SIF:
 
@@ -62,6 +85,12 @@ the SIF:
 It reads `/data/data_raw`, standardizes the GRF, computes disk and jet
 components, and writes an HDF5/XDMF pair under
 `$COURSE_WORK/inoisy/postprocessed`.
+
+“Standardizes” means subtracting a mean and dividing by a standard deviation so
+the field has a defined reference scale. HDF5 stores the numeric arrays. XDMF
+is a small XML description that tells compatible visualization programs how
+those arrays are arranged; it points to the HDF5 file rather than duplicating
+the data.
 
 ## 3. Open the notebook through Open OnDemand
 
@@ -78,6 +107,16 @@ NCShare Open OnDemand can launch JupyterLab from a selected Apptainer image:
    tutorials/05-visualization-postprocessing/scientific_visualization.ipynb
    ```
 
+Open OnDemand is a browser interface to cluster services. JupyterLab is an
+interactive workspace, and a **notebook** is a document made of executable
+code cells and explanatory Markdown cells. A **kernel** is the Python process
+that runs the code. Selecting the image's kernel is important: a host or user
+kernel may have different packages from the environment being taught.
+
+Run notebook cells from top to bottom the first time. A cell's displayed output
+may be old, so the visible figure alone does not prove that the current kernel
+successfully ran its code.
+
 For command-line testing inside a CPU allocation:
 
 ```bash
@@ -87,6 +126,11 @@ apptainer exec \
   "$COURSE_IMAGE" \
   jupyter lab --no-browser
 ```
+
+This alternative is for testing from a terminal inside a CPU allocation. Both
+host directories are bound so Jupyter can read the notebook and data. The
+`--no-browser` option prevents a compute node from trying to open its own web
+browser; in normal class use, Open OnDemand handles the browser connection.
 
 The notebook searches for input in this order:
 
@@ -98,6 +142,15 @@ The notebook searches for input in this order:
 The fallback matches the inoisy+ HDF5 schema but is not a solver result. It
 exists so queue delays do not stop the visualization lesson.
 
+An environment variable set for one command can select a specific real input:
+
+```bash
+export INOISY_H5="/work/$USER/ncshare-crash-course/inoisy/four-ranks/FILE.h5"
+```
+
+Replace `FILE.h5` with an existing filename. The notebook reports which input
+it selected; check that message before interpreting a plot.
+
 ## Container-specific reproducibility check
 
 Before exporting the final figure, record:
@@ -107,6 +160,11 @@ apptainer inspect "$COURSE_IMAGE" \
   | grep -E 'BaseImage|inoisy4dCommit|QuantUICommit|BlueprintVersion'
 cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
 ```
+
+The first command selects relevant image labels. The second uses a published
+checksum file when available and computes the checksum directly otherwise.
+Record the value; do not paste the fallback operator itself into a methods
+section.
 
 Keep that identity with the input HDF5 path, time/slice selection, percentile
 limits, plotting code, and exported figure.
