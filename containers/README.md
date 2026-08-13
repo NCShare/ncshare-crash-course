@@ -241,6 +241,51 @@ The instructor publishes the expected checksum. A mismatch is not automatically
 malicious, but it means the class is not using the same artifact and should
 stop to identify why.
 
+## Run MPI from the image
+
+Open MPI in the image is the Ubuntu package: it is *not* built against this
+cluster's Slurm PMI. That choice keeps the image portable, but it means the
+launch pattern matters. Three cases:
+
+**Single-rank checks (no launcher).** Exec'ing an MPI binary directly inside a
+Slurm allocation fails: the inherited `SLURM_*` variables convince Open MPI it
+was direct launched by `srun`, and `MPI_Init` aborts with
+`OPAL ERROR: Unreachable in file ext3x_client.c`. Drop the `SLURM_*` block:
+
+```bash
+env $(env | sed -n 's/^\(SLURM[A-Z_]*\)=.*/-u \1/p') \
+  apptainer exec "$COURSE_IMAGE" inoisy4d --help
+```
+
+`verify_container.sh` wraps its `inoisy4d` check this way. `--cleanenv` also
+works, but do not use it with `--nv`: it discards `CUDA_VISIBLE_DEVICES` and the
+container then sees every GPU on the node instead of the ones Slurm granted.
+
+**Single node (the workshop pattern).** Use the image's own `mpirun`. Open MPI
+is its own launcher here, never touches Slurm PMI, and still reads the
+allocation for its slot count, so no environment surgery is needed:
+
+```bash
+apptainer exec "$COURSE_IMAGE" mpirun -n "$SLURM_CPUS_PER_TASK" \
+  inoisy4d -n 64 -nk 128 -pgrid 1 1 1 4 -solver 0 -o output/
+```
+
+**Multiple nodes.** `mpirun` cannot start ranks on other nodes from inside the
+container, so hand the launch to Slurm's PMIx plugin and let each rank attach to
+the local `slurmstepd`:
+
+```bash
+export APPTAINERENV_PMIX_MCA_gds=hash
+srun --mpi=pmix apptainer exec "$COURSE_IMAGE" inoisy4d ...
+```
+
+`PMIX_MCA_gds=hash` is required. Without it the PMIx client in the container
+tries to map the host `slurmstepd` shared-memory segment, cannot open it across
+the mount namespace (`PMIX_ERR_FILE_OPEN_FAILURE`), and segfaults in
+`pmix_gds_shmem_fetch`. This path also depends on the container's PMIx and the
+host's `mpi/pmix` plugin staying compatible, which is why it is validated per
+cluster rather than assumed.
+
 ## Explain the trade-offs
 
 ### Advantages
@@ -265,7 +310,8 @@ stop to identify why.
   access without a Slurm GPU request.
 - Multi-node MPI needs a deliberate host/container MPI compatibility strategy.
   This workshop stays on one node and follows NCShare's container-internal
-  `mpirun` pattern.
+  `mpirun` pattern; see "Run MPI from the image" for the launch rules and the
+  validated multi-node fallback.
 - Containerization does not remove the need to cite, license, validate, profile,
   and understand scientific software.
 
