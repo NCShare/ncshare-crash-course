@@ -337,6 +337,27 @@ Same request, same `cpu_count()`, opposite consequences. Whenever you
 benchmark on a shared cluster, confirm what you were actually given rather
 than what the machine says it has.
 
+### Carry the numbers into the visualization session
+
+Each comparison writes a small JSON file to `$COURSE_WORK/quantui/`. You will
+plot these in [Session 4](../05-visualization-postprocessing/README.md) as a
+CPU-vs-GPU bar chart — no need to copy numbers by hand.
+
+If you would also like a **geometry-relaxation trajectory** to plot (energy at
+each optimization step), generate one with:
+
+```bash
+# CPU work — QuantUI's optimizer runs on the host, so do NOT request a GPU.
+apptainer exec --cleanenv \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  --env "COURSE_WORK=$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  python run_geometry_optimization.py --preset water
+```
+
+Because it needs no GPU, this one can also wait for the visualization session's
+CPU allocation — keeping the eight workshop H200s free for the timing sweep.
+
 ## 52-60 min — Explain and improve the design
 
 With a partner, answer:

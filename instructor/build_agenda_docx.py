@@ -17,12 +17,16 @@ from docx.shared import Inches, Pt, RGBColor, Twips
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "agenda" / "Agenda_Revised.docx"
-TABLE_HELPER = Path(
-    "/Users/alejo/.codex/plugins/cache/openai-primary-runtime/documents/"
-    "26.727.11326/skills/documents/scripts"
-)
-sys.path.insert(0, str(TABLE_HELPER))
-from table_geometry import apply_table_geometry  # noqa: E402
+
+# Column-width helper is vendored beside this script (instructor/table_geometry.py)
+# so the agenda can be rebuilt on any machine. Fall back to a no-op if it is ever
+# missing, so a stale environment degrades to auto-fit rather than crashing.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from table_geometry import apply_table_geometry  # noqa: E402
+except ImportError:  # pragma: no cover - defensive fallback
+    def apply_table_geometry(table, col_widths_twips):  # type: ignore[misc]
+        return table
 
 
 BLUE = "2E74B5"

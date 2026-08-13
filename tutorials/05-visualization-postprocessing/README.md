@@ -151,6 +151,39 @@ export INOISY_H5="/work/$USER/ncshare-crash-course/inoisy/four-ranks/FILE.h5"
 Replace `FILE.h5` with an existing filename. The notebook reports which input
 it selected; check that message before interpreting a plot.
 
+## Plot the QuantUI results from the GPU session
+
+The GPU session produced two datasets in `$COURSE_WORK/quantui/`. Turn them into
+figures with the companion notebook
+[`plot_quantui_results.ipynb`](plot_quantui_results.ipynb), which is deliberately
+thin — every plotting decision lives in the version-controlled sidecar
+[`quantui_result_plots.py`](quantui_result_plots.py), and the notebook only
+imports and calls it.
+
+Two figures:
+
+1. **CPU vs GPU wall time** — a grouped bar chart across the basis sets you swept,
+   showing the GPU bars staying nearly flat while the CPU cost for the largest
+   basis explodes. The crossover is where the two bars level.
+2. **Geometry-relaxation trajectory** — SCF energy at each optimization step,
+   falling steeply then leveling as the structure reaches its minimum. Generate
+   the data (a CPU calculation — no GPU needed) with:
+
+   ```bash
+   apptainer exec --cleanenv \
+     --bind "$COURSE_WORK:$COURSE_WORK" \
+     --env "COURSE_WORK=$COURSE_WORK" \
+     "$COURSE_IMAGE" \
+     python "$COURSE_ROOT/tutorials/04-gpu-quantui/run_geometry_optimization.py" \
+     --preset water
+   ```
+
+If a job is still queued, the notebook falls back to bundled sample data under
+[`data/sample_quantui/`](data/sample_quantui/) so the plotting lesson still runs
+— the figure title tells you which source you are looking at. (The bar-chart
+sample is real NCShare measurement; the trajectory sample is a clearly-labeled
+synthetic placeholder until you generate a real one.)
+
 ## Container-specific reproducibility check
 
 Before exporting the final figure, record:
