@@ -9,10 +9,12 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=/work/%u/ncshare-crash-course/logs/%x-%j.out
 
-# TODO (confirm before the workshop): partition name and --gres string.
-# TODO (confirm before the workshop): resource allocation
+# Partition and --gres confirmed by NCShare (Uthpala Herath, 2026-08-12): the
+# dedicated `workshop` partition is one GPU node (8x H200), and jobs request a
+# card with `--gres=gpu:h200:1`. Up to 12 CPU cores per job are approved.
 #   NCShare GPU nodes carry 8 H200s alongside ~96 physical cores, so roughly
-#   12 cores per GPU. Four is a comfortable share for this single-GPU example.
+#   12 cores per GPU. Four is a comfortable share for this single-GPU
+#   verification job; the CPU/GPU crossover exercise requests more (6 or 12).
 
 set -euo pipefail
 

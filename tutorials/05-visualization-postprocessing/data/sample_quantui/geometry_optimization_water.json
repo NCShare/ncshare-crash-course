@@ -1,0 +1,26 @@
+{
+  "_provenance": "SYNTHETIC placeholder, not a real optimizer run. Structurally valid (monotonically decreasing SCF energy leveling off at convergence) so the plotting lesson renders without a live calculation. Replace with the output of run_geometry_optimization.py from a real run before teaching from the numbers.",
+  "system": "H2O  RHF/STO-3G",
+  "formula": "H2O",
+  "method": "RHF",
+  "basis": "STO-3G",
+  "converged": true,
+  "n_steps": 8,
+  "energies_hartree": [
+    -74.9400,
+    -74.9498,
+    -74.9558,
+    -74.9594,
+    -74.9616,
+    -74.9630,
+    -74.9638,
+    -74.9642,
+    -74.9643
+  ],
+  "energy_change_hartree": -0.0243,
+  "rmsd_angstrom": 0.082,
+  "fmax_ev_per_angstrom": 0.05,
+  "elapsed_seconds": null,
+  "slurm_job_id": null,
+  "synthetic": true
+}

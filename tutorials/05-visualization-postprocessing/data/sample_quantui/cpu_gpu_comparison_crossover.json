@@ -1,0 +1,29 @@
+{
+  "_provenance": "Measured on NCShare compute-gpu-02 (H200, driver 580.126.20) on 2026-08-05, 1 GPU vs 6 affinity-confirmed CPU cores. Bundled fallback so the plotting lesson runs without a fresh GPU job.",
+  "system": "C6H6  RHF/cc-pVDZ",
+  "method": "RHF",
+  "basis": "cc-pVDZ",
+  "cpu": {
+    "ok": true,
+    "elapsed_seconds": 2.74,
+    "gpu_used": false,
+    "gpu_name": null,
+    "converged": true,
+    "energy_hartree": null,
+    "n_iterations": null
+  },
+  "gpu": {
+    "ok": true,
+    "elapsed_seconds": 2.86,
+    "gpu_used": true,
+    "gpu_name": "NVIDIA H200",
+    "converged": true,
+    "energy_hartree": null,
+    "n_iterations": null
+  },
+  "cpu_over_gpu": 0.958,
+  "faster": "CPU",
+  "cpus_requested": "6",
+  "cpu_affinity": 6,
+  "slurm_job_id": null
+}
