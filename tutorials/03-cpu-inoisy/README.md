@@ -23,6 +23,8 @@ when the image is created, not once per user or job.
 `inoisy+` generates a four-dimensional Gaussian random field. The science is
 context rather than the learning objective. We run the same tiny global grid
 with one and four MPI ranks and retain HDF5 results for the visualization lab.
+In prose we call the application **inoisy+**; `inoisy4d` is the upstream
+repository and executable name that appears in commands.
 
 ## How the program reaches a compute node
 
@@ -280,7 +282,9 @@ than loading a production-scale four-dimensional array.
 
 ```bash
 apptainer inspect "$COURSE_IMAGE" \
-  | grep -E 'BaseImage|HYPREVersion|inoisy4dCommit|BlueprintVersion'
+  | grep -E 'BaseImage|HYPREVersion|inoisy4dSelection|BlueprintVersion'
+apptainer exec "$COURSE_IMAGE" \
+  cat /opt/course-build/inoisy4d-commit.txt
 cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
 ```
 
@@ -289,7 +293,9 @@ cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
 not exist. `||` means “run the command on the right only if the command on the
 left failed,” so the image is checksummed directly as a fallback.
 
-Record the image path/checksum, definition version, job IDs, Slurm resources,
+The image label states the source-selection policy; the file printed by `cat`
+contains the exact commit resolved when this SIF was built. Record that commit
+with the image path/checksum, definition version, job IDs, Slurm resources,
 command-line parameters, and output paths. The source commit alone is
 insufficient: it does not identify the MPI, HDF5, HYPRE, compiler, or Python
 stack used to produce the result.

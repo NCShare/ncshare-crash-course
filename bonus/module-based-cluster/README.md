@@ -8,6 +8,14 @@ main tutorials use the shared course image.
 Use this bonus when teaching at a site that provides compatible compiler, MPI,
 parallel HDF5, GSL, CUDA, and Python modules.
 
+The revisions below are intentionally pinned examples for the native workflow;
+they are not guaranteed to match the main course image, which installs QuantUI
+`0.6.1` and selects the latest inoisy4d default branch at image-build time.
+Therefore, this bonus supports a comparison of **environment-management
+approaches**, not a controlled performance or numerical comparison between the
+two paths. Align application versions first if the scientific results themselves
+are to be compared.
+
 ## Why compare both approaches?
 
 The scientific workflow is the same:

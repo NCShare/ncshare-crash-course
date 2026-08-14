@@ -55,6 +55,20 @@ slurm-*.out
 /logs/
 quantui_gpu_result.json
 cpu_gpu_comparison_*.json
+geometry_optimization_*.json
+
+# ...but the bundled fallback results under data/sample_quantui/ are tracked
+# on purpose (they let the plotting lesson run without a live GPU job), so
+# re-include them explicitly. The parent directory is not ignored, so these
+# negations take effect.
+!tutorials/05-visualization-postprocessing/data/sample_quantui/cpu_gpu_comparison_*.json
+!tutorials/05-visualization-postprocessing/data/sample_quantui/geometry_optimization_*.json
+
+# Figures written by plot_quantui_results.ipynb are outputs, not sources.
+cpu_gpu_walltime.png
+cpu_gpu_walltime.pdf
+geometry_relaxation.png
+geometry_relaxation.pdf
 
 # inoisy4d writes its solver output next to the binary when run in place.
 # The tracked sample_* datasets under tutorials/05-.../data/ are unaffected.

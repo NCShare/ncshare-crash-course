@@ -27,18 +27,18 @@ import os
 import subprocess
 import sys
 import time
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 # Measured on an NCShare H200 (driver 580.126.20, compute-gpu-02) on
 # 2026-08-05, 1 GPU against 6 affinity-confirmed CPU cores:
 #
 #   H2O  / STO-3G    GPU 1.80 s   CPU  0.35 s   0.20x
-#   H2O  / cc-pVDZ   GPU 2.72 s   CPU  0.48 s   0.18x
 #   C6H6 / 6-31G     GPU 2.69 s   CPU  0.77 s   0.29x
 #   C6H6 / cc-pVDZ   GPU 2.86 s   CPU  2.74 s   0.96x  <- the crossover
 #   C6H6 / cc-pVTZ   GPU 7.07 s   CPU 42.41 s   6.00x
 #
-# Note that the GPU wall time barely moves across the first four: that is
+# Note that the GPU wall time barely moves across the three pre-large presets:
 # fixed launch and transfer overhead, and it is the whole point of the
 # exercise. Only cc-pVTZ makes the arithmetic large enough for the device
 # to win. "crossover" below is a near-tie by design -- it is where the two
@@ -207,7 +207,7 @@ def main() -> None:
           + (f", affinity mask shows {affinity}" if affinity is not None else ""))
     print(f"  CPU wall time : {cpu['elapsed_seconds']:.2f} s")
     print(f"  GPU wall time : {gpu['elapsed_seconds']:.2f} s")
-    print(f"  Ratio         : {speedup:.2f}x  ({faster} faster)")
+    print(f"  CPU/GPU time  : {speedup:.2f}x  ({faster} faster)")
     print(f"  Energies agree: {abs(cpu['energy_hartree'] - gpu['energy_hartree']) < 1e-6}")
     print("=" * 60)
 
@@ -225,6 +225,13 @@ def main() -> None:
         "system": spec["label"],
         "method": spec["method"],
         "basis": spec["basis"],
+        "quantui_version": package_version("quantui"),
+        "quantui_source_checkout_commit": (
+            Path("/opt/course-build/quantui-commit.txt").read_text().strip()
+            if Path("/opt/course-build/quantui-commit.txt").is_file()
+            else None
+        ),
+        "course_image": os.environ.get("COURSE_IMAGE"),
         "cpu": cpu,
         "gpu": gpu,
         "cpu_over_gpu": speedup,

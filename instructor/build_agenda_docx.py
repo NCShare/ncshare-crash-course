@@ -17,12 +17,16 @@ from docx.shared import Inches, Pt, RGBColor, Twips
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "agenda" / "Agenda_Revised.docx"
-TABLE_HELPER = Path(
-    "/Users/alejo/.codex/plugins/cache/openai-primary-runtime/documents/"
-    "26.727.11326/skills/documents/scripts"
-)
-sys.path.insert(0, str(TABLE_HELPER))
-from table_geometry import apply_table_geometry  # noqa: E402
+
+# Column-width helper is vendored beside this script (instructor/table_geometry.py)
+# so the agenda can be rebuilt on any machine. Fall back to a no-op if it is ever
+# missing, so a stale environment degrades to auto-fit rather than crashing.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from table_geometry import apply_table_geometry  # noqa: E402
+except ImportError:  # pragma: no cover - defensive fallback
+    def apply_table_geometry(table, col_widths_twips):  # type: ignore[misc]
+        return table
 
 
 BLUE = "2E74B5"
@@ -279,6 +283,14 @@ def add_heading(doc, text, level=1):
     return paragraph
 
 
+def add_spaced_page_break(doc):
+    """Start a page with enough breathing room below the running header."""
+    doc.add_page_break()
+    spacer = doc.add_paragraph()
+    spacer.add_run("\u00a0")
+    spacer.paragraph_format.space_after = Pt(10)
+
+
 def add_metric_strip(doc):
     table = doc.add_table(rows=1, cols=4)
     values = [
@@ -318,7 +330,7 @@ def add_schedule_table(doc):
         ("1:30-2:15", "Session 3B: inoisy+ on CPUs", "One-rank/four-rank HDF5 results"),
         ("2:15-2:30", "Break", ""),
         ("2:30-3:30", "Session 3C: QuantUI on GPU", "Verified GPU-offload result plus a measured CPU/GPU crossover"),
-        ("3:30-4:30", "Session 4: visualization", "Post-processed figure and notebook"),
+        ("3:30-4:30", "Session 4: visualization", "Four figures and a provenance manifest"),
         ("4:30-5:00", "Wrap-up", "Support path and next steps"),
     ]
     table = doc.add_table(rows=1, cols=3)
@@ -473,9 +485,9 @@ def build():
     add_callout(
         doc,
         "Before the workshop",
-        "Active NCShare account; registered SSH public key; laptop with SSH client; "
-        "course clone; shared course-SIF path; GPU access requested in advance. Pairing "
-        "is available for participants still waiting for access.",
+        "Active NCShare account; laptop; SSH key-based access or browser-based Open "
+        "OnDemand access; course clone; shared course-SIF path; GPU access requested "
+        "in advance. Pairing is available for participants still waiting for access.",
     )
 
     add_heading(doc, "Learning outcomes", 1)
@@ -486,12 +498,12 @@ def build():
         "Read an Apptainer definition and identify its build, provenance, and test evidence.",
         "Submit, monitor, diagnose, and cancel Slurm jobs.",
         "Run one-rank, four-rank MPI, and GPU workflows with reasonable resources.",
-        "Reuse the SIF to post-process HDF5 and export an accessible scientific figure.",
+        "Reuse the SIF to post-process HDF5 and export accessible, reproducible figures.",
     ]
     for item in outcomes:
         add_bullet(doc, item, bullet_num)
 
-    doc.add_page_break()
+    add_spaced_page_break(doc)
     add_heading(doc, "At a glance", 1)
     add_schedule_table(doc)
 
@@ -509,12 +521,7 @@ def build():
         "storage lifetimes, partitions, and how the shared Apptainer image is built, "
         "staged, launched, and supported.",
     )
-    add_body(
-        doc,
-        "Provided: command card, annotated Slurm/container/data workflow, access "
-        "troubleshooting, and a verified interactive-allocation command.",
-    )
-
+    add_spaced_page_break(doc)
     add_heading(doc, "Session 2 • Storage, transfer, and I/O", 1)
     add_body(
         doc,
@@ -557,6 +564,11 @@ def build():
     ):
         add_bullet(doc, item, bullet_num)
 
+    add_spaced_page_break(doc)
+    continued = doc.add_paragraph()
+    continued.paragraph_format.space_after = Pt(4)
+    continued_run = continued.add_run("SESSION 3 • CONTINUED")
+    set_font(continued_run, size=9, color=MUTED, bold=True)
     add_heading(doc, "2:30-3:30 • QuantUI on an H200 GPU, and when a GPU is worth it", 2)
     for item in (
         "Inspect the SIF's Python 3.11 environment, package manifests, and QuantUI version.",
@@ -578,9 +590,11 @@ def build():
     add_heading(doc, "Session 4 • Scientific visualization and post-processing", 1)
     add_body(
         doc,
-        "3:30-4:30. Launch Jupyter from the same SIF; inspect HDF5 lazily; choose honest "
-        "color/normalization; run the containerized upstream GRF-to-emissivity converter; "
-        "and export PNG/PDF figures with image, input, and plot provenance.",
+        "3:30-4:30. Launch Jupyter from the same SIF and make four focused figures from "
+        "inoisy+ and QuantUI outputs. Inspect HDF5 lazily; choose color and normalization "
+        "from data meaning; compare CPU/GPU timing with an explicit denominator; show "
+        "ordered scientific change; and export PNG/PDF figures with a provenance manifest. "
+        "The upstream GRF-to-emissivity converter remains a separate CPU step.",
     )
 
     add_heading(doc, "Wrap-up • 4:30-5:00", 1)

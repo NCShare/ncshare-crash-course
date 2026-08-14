@@ -24,7 +24,9 @@ mkdir -p "$OUTDIR"
 echo "job_id=$SLURM_JOB_ID host=$(hostname) ranks=$SLURM_NTASKS"
 echo "course_image=$COURSE_IMAGE"
 apptainer inspect "$COURSE_IMAGE" \
-  | grep -E 'BaseImage|HYPREVersion|inoisy4dCommit|BlueprintVersion' || true
+  | grep -E 'BaseImage|HYPREVersion|inoisy4dSelection|BlueprintVersion' || true
+echo -n "inoisy4d_resolved_commit="
+apptainer exec "$COURSE_IMAGE" cat /opt/course-build/inoisy4d-commit.txt
 
 # This single-node workshop job uses the MPI launcher packaged in the image.
 apptainer exec --cleanenv \

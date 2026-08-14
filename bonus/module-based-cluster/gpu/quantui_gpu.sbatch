@@ -24,7 +24,7 @@ source "$CONDA_ROOT/etc/profile.d/conda.sh"
 conda activate ncshare-quantui-native
 
 export OMP_NUM_THREADS="$SLURM_CPUS_PER_TASK"
-export QUANTUI_COMMIT="$(git -C "$QUANTUI_SRC" rev-parse --short HEAD)"
+export QUANTUI_SOURCE_CHECKOUT_COMMIT="$(git -C "$QUANTUI_SRC" rev-parse --short HEAD)"
 
 nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
 quantui gpu check

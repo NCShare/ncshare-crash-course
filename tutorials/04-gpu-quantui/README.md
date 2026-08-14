@@ -24,9 +24,11 @@ the image.
 ## The hardware you are actually using
 
 NCShare's GPU tier is four nodes, each with **eight NVIDIA H200 SXM (141 GB
-HBM3e)** and roughly 96 physical CPU cores plus 2 TB of RAM — 32 H200s in
-total. That works out to about 12 CPU cores per GPU, which is why the batch
-job below asks for four.
+HBM3e)**, roughly 96 physical CPU cores (192 hardware threads), and 2 TB of
+RAM — 32 H200s in total. The temporary `workshop` reservation used by this
+course was reported as one of those eight-GPU nodes. That works out to about
+12 physical CPU cores per GPU, which is why the verification job below asks
+for four.
 
 Two consequences worth noting before you start:
 
@@ -80,6 +82,8 @@ apptainer exec "$COURSE_IMAGE" python --version
 apptainer exec "$COURSE_IMAGE" python -c \
   "import quantui, pyscf; print('QuantUI:', quantui.__file__); print('PySCF:', pyscf.__version__)"
 apptainer exec "$COURSE_IMAGE" \
+  cat /opt/course-build/quantui-version.txt
+apptainer exec "$COURSE_IMAGE" \
   cat /opt/course-build/quantui-commit.txt
 apptainer exec "$COURSE_IMAGE" \
   sed -n '1,80p' /opt/course-build/conda-explicit.txt
@@ -87,12 +91,14 @@ apptainer exec "$COURSE_IMAGE" \
   grep -E 'gpu4pyscf|cupy|cutensor' /opt/course-build/pip-freeze.txt
 ```
 
-All five commands execute inside the image:
+All six commands execute inside the image:
 
 - `python --version` confirms the interpreter version;
 - `python -c "..."` runs a short Python statement without creating a script;
   it imports QuantUI and PySCF and prints where/version information;
-- `cat` prints the recorded QuantUI source commit;
+- the first `cat` prints the installed QuantUI package version;
+- the second `cat` prints the matching source-checkout commit retained for
+  examples and inspection—the checkout is not the installed package;
 - `sed -n '1,80p'` prints the first 80 lines of the resolved conda package
   manifest; and
 - `grep -E` searches the pip manifest for any of three GPU package names. The
@@ -181,7 +187,7 @@ its responsibility:
 | Scheduler | GPU partition, `--gres`, CPUs, memory, wall time |
 | Container | SIF path, `--nv`, bind mounts, clean runtime environment |
 | Application | `quantui gpu check`, water calculation, `gpu_used` assertion |
-| Reproducibility | image labels, QuantUI commit, JSON result, Slurm log |
+| Reproducibility | image labels, installed QuantUI version, source-checkout commit, JSON result, Slurm log |
 
 The job requests one GPU because this example uses one. More GPUs would not
 make this script multi-GPU.
@@ -260,16 +266,34 @@ depends on the molecule, basis, method, and the specific hardware.
 Measure it rather than assuming it:
 
 ```bash
+# This timing loop needs a GPU allocation of its own. Request one after the
+# earlier verification shell has been released.
+srun -p workshop \
+  --gres=gpu:h200:1 \
+  --time=00:10:00 \
+  --cpus-per-task=6 \
+  --mem=16G \
+  --pty bash -l
+
+# The prompt is now on the allocated GPU node.
+export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
+export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
 cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
 
 for p in small medium crossover large; do
   apptainer exec --nv --cleanenv \
     --bind "$COURSE_WORK:$COURSE_WORK" \
     --env "COURSE_WORK=$COURSE_WORK" \
+    --env "COURSE_IMAGE=$COURSE_IMAGE" \
+    --env "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-}" \
+    --env "SLURM_CPUS_PER_TASK=$SLURM_CPUS_PER_TASK" \
     --env "OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK" \
     "$COURSE_IMAGE" \
     python run_cpu_gpu_comparison.py --preset "$p"
 done
+
+exit  # release the GPU when the sweep finishes
 ```
 
 ### What this looked like on NCShare
@@ -277,17 +301,16 @@ done
 Measured 2026-08-05 on `compute-gpu-02` (H200, driver 580.126.20), **1 GPU
 against 6 affinity-confirmed CPU cores**:
 
-| System | GPU | CPU | Ratio |
+| System | GPU | CPU | CPU time / GPU time |
 |---|---:|---:|---|
 | H2O / STO-3G | 1.80 s | 0.35 s | 0.20x |
-| H2O / cc-pVDZ | 2.72 s | 0.48 s | 0.18x |
 | C6H6 / 6-31G | 2.69 s | 0.77 s | 0.29x |
 | C6H6 / cc-pVDZ | 2.86 s | 2.74 s | **0.96x — the crossover** |
 | C6H6 / cc-pVTZ | 7.07 s | 42.41 s | **6.00x** |
 
-Look at the GPU column first. It barely moves — 1.80 s to 2.86 s — while the
-system grows by orders of magnitude in basis functions. That flat portion *is*
-the fixed overhead, visible rather than asserted. The CPU column meanwhile
+Look at the GPU column first. Across the first three presets it barely moves —
+1.80 s to 2.86 s — while the system grows substantially. That flat portion
+*is* the fixed overhead, visible rather than asserted. The CPU column meanwhile
 climbs steadily, and at cc-pVTZ it explodes to 42 s while the GPU reaches only
 7 s.
 
@@ -310,7 +333,7 @@ timing comparison is meaningless.
 Record your own numbers, which will differ — different allocation, different
 node load:
 
-| System | CPU (s) | GPU (s) | Ratio |
+| System | CPU (s) | GPU (s) | CPU time / GPU time |
 |---|---:|---:|---|
 | H2O RHF/STO-3G | | | |
 | C6H6 RHF/6-31G | | | |
@@ -336,6 +359,32 @@ inflated — making the GPU look better than it is.
 Same request, same `cpu_count()`, opposite consequences. Whenever you
 benchmark on a shared cluster, confirm what you were actually given rather
 than what the machine says it has.
+
+### Carry the numbers into the visualization session
+
+Each comparison writes a small JSON file to `$COURSE_WORK/quantui/`. You will
+plot these in [Session 4](../05-visualization-postprocessing/README.md). The
+primary notebook uses a connected-dot plot on a logarithmic time axis; the
+preserved focused QuantUI notebook offers a grouped-bar alternative. Both read
+the JSON directly, so there is no need to copy numbers by hand.
+
+If you would also like a **geometry-relaxation trajectory** to plot (energy at
+each optimization step), generate it from the CPU allocation used for the
+visualization session—not from the login node and not while holding a GPU:
+
+```bash
+# CPU work — QuantUI's optimizer runs on the host, so do NOT request a GPU.
+apptainer exec --cleanenv \
+  --bind "$COURSE_WORK:$COURSE_WORK" \
+  --env "COURSE_WORK=$COURSE_WORK" \
+  "$COURSE_IMAGE" \
+  python "$COURSE_ROOT/tutorials/04-gpu-quantui/run_geometry_optimization.py" \
+  --preset water
+```
+
+Because it needs no GPU, the recommended time to run it is after launching the
+visualization session's CPU-only Open OnDemand job. If no real trajectory is
+available, the notebook uses a clearly marked synthetic fallback.
 
 ## 52-60 min — Explain and improve the design
 
