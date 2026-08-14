@@ -2,11 +2,11 @@
 
 ## Where commands run
 
-| Place | Use it for | Do not use it for |
-|---|---|---|
-| Login node | edit files, submit/monitor jobs, light file management | compilation or computation |
-| Interactive allocation | compile, debug, test, inspect GPUs | work after the allocation ends |
-| Batch job | reproducible CPU/GPU runs | interactive editing |
+| Place                  | Use it for                                             | Do not use it for              |
+| ---------------------- | ------------------------------------------------------ | ------------------------------ |
+| Login node             | edit files, submit/monitor jobs, light file management | compilation or computation     |
+| Interactive allocation | compile, debug, test, inspect GPUs                     | work after the allocation ends |
+| Batch job              | reproducible CPU/GPU runs                              | interactive editing            |
 
 ## Storage
 
@@ -14,7 +14,7 @@
 |---|---|---|
 | `/hpc/home/$USER` | scripts, source, course repository, small user setup | 50 GB; removed when the account expires |
 | `/work/$USER` | active inputs and generated results | files older than 75 days are purged |
-| `/opt/apps/containers/user` | shared Apptainer images staged with the HPC team | available across cluster nodes |
+| `/opt/apps/containers/users` | shared Apptainer images staged with the HPC team | available across cluster nodes |
 | `/data/projectname` | requested shared project allocation | limited duration; request through institutional contacts |
 | `/scratch` | job-local high-performance temporary I/O | copy results out before the job ends |
 
@@ -39,7 +39,7 @@ man command
 ## Apptainer
 
 ```bash
-export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
+export COURSE_IMAGE="/opt/apps/containers/users/ncshare-science-course.sif"
 apptainer inspect "$COURSE_IMAGE"
 apptainer run "$COURSE_IMAGE"
 apptainer exec "$COURSE_IMAGE" python --version

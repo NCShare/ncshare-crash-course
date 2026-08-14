@@ -222,7 +222,7 @@ the final global image location with the HPC team.
 ## Inspect and verify
 
 ```bash
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 apptainer inspect "$COURSE_IMAGE"
 apptainer run "$COURSE_IMAGE"
 bash containers/verify_container.sh "$COURSE_IMAGE" cpu

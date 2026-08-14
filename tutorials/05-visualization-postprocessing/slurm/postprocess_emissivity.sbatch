@@ -10,7 +10,7 @@
 
 set -euo pipefail
 
-COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 
 if [[ ! -f "$COURSE_IMAGE" ]]; then

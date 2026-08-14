@@ -50,62 +50,35 @@ What each command means:
 A **shell variable** is a named value. `$HOME` means “substitute the value of the variable named `HOME` here.” The `$` is not part of the variable's name.
 Double quotes keep the substituted path together if it ever contains spaces. Other variables used later include `$USER`, the current username, and `$SLURM_JOB_ID`, the identifier Slurm assigns to a job.
 
-## 2. Inspect storage
+## 2. See where you can write
 
-Files are organized in a directory tree. NCShare provides different storage locations because small persistent files, active research data, and temporary
-high-I/O files have different needs. The [NCShare storage overview](https://userguide.ncshare.org/guides/overview/#data-storage) is the authority for current limits, lifetimes, and permitted data.
-
-Run,
+Files are organized in a directory tree. You have two places of your own on NCShare,
 ```bash
 ls -ld "$HOME" "/work/$USER"
-du -sh "$HOME"
-df -h "$HOME" "/work/$USER"
 ```
 
 - `ls` lists files. `-l` requests details such as owner and permissions, and `-d` describes each directory itself instead of listing its contents.
-- `du` estimates how much space files consume. `-s` gives one summary rather than every subdirectory, and `-h` uses readable units such as MB and GB.
-- `df` reports capacity and free space for the filesystem containing a path; `-h` again requests readable units.
+- `$HOME` is your home directory, for scripts and small files.
+- `/work/$USER` is for active datasets and job output.
 
-Use `$HOME` for small scripts, configuration, and the course repository. Use `/work/$USER` for active datasets and job output. Use `/scratch` only from
-inside a job, and copy anything valuable out before the job ends. The HPC team stages the shared course image under `/opt/apps/containers/user`.
+The HPC team stages the shared course image under `/opt/apps/containers/users`. Session 2 covers what belongs in each location, how much space you get,
+and how long files survive.
 
-`du` and `df` answer different questions: `du` measures your files, while `df` describes the filesystem as a whole.
+## 3. Read the shape of a command
 
-## 3. Practice the essential file commands
+Commands usually follow the pattern `command options arguments`. In `ls -ld "$HOME"`, `ls` is the command, `-ld` combines two options, and the path is the
+argument. Options are usually a single letter after one dash, and several can be combined: `-l -d` and `-ld` mean the same thing.
 
-The following creates a safe practice directory in your home directory,
+To read a command's manual,
 ```bash
-mkdir -p "$HOME/ncshare-practice"
-cd "$HOME/ncshare-practice"
-printf "NCShare practice\n" > note.txt
-cp note.txt note-copy.txt
-mv note-copy.txt renamed.txt
-ls -lah
-less note.txt
-du -sh .
-find . -maxdepth 1 -type f
+man ls
 ```
 
-Read the sequence before running it:
-
-- `mkdir` creates a directory. `-p` also creates missing parent directories and does not fail if the directory already exists.
-- `cd` changes the working directory. The next commands therefore operate in `ncshare-practice`.
-- `printf` produces the text `NCShare practice`. `\n` means a new line. The `>` redirects that output into `note.txt`; it creates or overwrites the file, so use redirection carefully.
-- `cp SOURCE DESTINATION` copies a file.
-- `mv SOURCE DESTINATION` moves or renames a file.
-- `ls -lah` combines long format (`-l`), hidden files (`-a`), and readable sizes (`-h`).
-- `less` opens a text file one screen at a time. Press `q` to quit.
-- `.` means the current directory, so `du -sh .` summarizes the directory you are in.
-- `find` searches below a path. Here `-maxdepth 1` prevents a deep recursive search and `-type f` selects ordinary files.
-
-Commands usually follow the pattern `command options arguments`. In `cp note.txt note-copy.txt`, `cp` is the command and the two filenames are
-arguments. Use `man COMMAND`, such as `man cp`, to open a command's manual; press `q` to leave it.
+Press `q` to leave the manual. `man` works for nearly every command in this course, and is faster than searching the web for what a flag does.
 
 ## 4. Clone and inspect official examples
 
-Git records versions of a collection of files called a **repository**. The
-command below downloads a working copy of NCShare's official examples from
-GitHub:
+Git records versions of a collection of files called a **repository**. The command below downloads a working copy of NCShare's official examples from GitHub:
 
 ```bash
 cd "$HOME"
@@ -116,82 +89,49 @@ less README.md
 less Apptainer-Recipe-for-FHI-aims/fhiaims.def
 ```
 
-The vertical bar `|`, called a **pipe**, sends the output of `find` into
-`sort`. It lets small commands be combined without creating an intermediate
-file. `README.md` is a Markdown text file, while `.def` is an Apptainer
-definition file discussed in the container session.
+- `find` searches below a path. Here `-maxdepth 2` prevents a deep recursive search and `-type f` selects ordinary files.
+- The vertical bar `|`, called a **pipe**, sends the output of `find` into `sort`. It lets small commands be combined without creating an intermediate file.
+- `less` opens a text file one screen at a time. Press `q` to quit.
+
+`README.md` is a Markdown text file, while `.def` is an Apptainer definition file discussed in the container session.
 
 If the repository already exists, update it instead of cloning a second copy:
-
 ```bash
 cd "$HOME/examples"
-git pull --ff-only
+git pull 
 ```
 
-`git pull` retrieves newer commits. `--ff-only` refuses to create an automatic
-merge, which is helpful for a course copy that students are not expected to
-edit.
+`git pull` retrieves newer commits. 
 
 ## 5. Request a compute shell
 
-Slurm is the cluster's scheduler. It decides when and where work runs based on
-the resources requested by all users. An **interactive allocation** gives you
-a shell on a compute node for a limited time:
+Slurm is the cluster's scheduler. It decides when and where work runs based on the resources requested by all users. An **interactive allocation** gives you
+a shell on a compute node for a limited time,
 
 ```bash
-srun -p workshop --time=00:10:00 --cpus-per-task=2 --mem=2G --pty bash -l
+srun -p workshop --time=00:10:00 --cpus-per-task=2 --mem=1G --pty bash -i
 ```
 
-This asks Slurm to:
+This asks Slurm to,
 
 - use the `workshop` partition (`-p workshop`);
 - reserve ten minutes (`--time=00:10:00`);
 - provide two CPU cores to one task (`--cpus-per-task=2`);
-- reserve 2 GB of memory (`--mem=2G`); and
-- attach an interactive login-style Bash shell (`--pty bash -l`).
+- reserve 1 GB of memory (`--mem=1G`); and
+- attach an interactive login-style Bash shell (`--pty bash -i`).
 
 A **partition** is a named group or scheduling policy for compute resources.
 Use the instructor-approved partition if `workshop` is not available. The job
 may wait in the queue before the prompt changes.
 
-Inside the allocation, compare the new environment with the login node:
-
+Inside the allocation, compare the new environment with the login node,
 ```bash
 hostname -A
 echo "$SLURM_JOB_ID"
 echo "$SLURM_CPUS_PER_TASK"
 ```
 
-The hostname should now identify a compute node. Slurm created the two
-variables and exported them into this shell.
-
-## 6. Inspect and run the course container
-
-An Apptainer **SIF image** is a read-only file containing an application and
-its user-space software environment. It does not allocate CPUs or GPUs; Slurm
-did that in the previous step. The
-[NCShare software guide](https://userguide.ncshare.org/guides/slurm/software/)
-explains why containers are the normal route for packaged scientific software
-on NCShare.
-
-```bash
-export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
-apptainer --version
-apptainer inspect "$COURSE_IMAGE"
-apptainer exec "$COURSE_IMAGE" python --version
-apptainer exec "$COURSE_IMAGE" mpirun --version
-exit
-```
-
-- `export NAME=value` creates a shell variable and makes it available to
-  programs started from the shell. We store the long image path once in
-  `COURSE_IMAGE` so later commands are easier to read.
-- `apptainer --version` checks that Apptainer is installed on the host.
-- `apptainer inspect IMAGE` prints labels and metadata stored in the image.
-- `apptainer exec IMAGE COMMAND` runs one command using software from the
-  image. Here it reports the packaged Python and MPI versions.
-- `exit` leaves the compute shell and returns to the login node. The allocation
-  also ends when its time limit expires.
+The hostname should now identify a compute node. Slurm created the two variables and exported them into this shell.
 
 ## Checkpoint
 
@@ -199,6 +139,5 @@ Without looking back, answer:
 
 1. Am I on my laptop, a login node, or a compute node? Which command proves it?
 2. How many CPUs, how much memory, and how much time did I request?
-3. Which parts came from Slurm and which came from the SIF?
-4. What do `$HOME`, `$USER`, and `$SLURM_JOB_ID` mean?
-5. Which files belong in `$HOME`, `/work/$USER`, and `/scratch`?
+3. What do `$HOME`, `$USER`, and `$SLURM_JOB_ID` mean?
+4. How would I find out what the `-h` option does for a command I have not seen before?

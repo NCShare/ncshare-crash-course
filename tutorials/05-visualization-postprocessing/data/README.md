@@ -25,7 +25,7 @@ calculation has not been run; it reports those sources separately.
 Regenerate the raw file with:
 
 ```bash
-export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
+export COURSE_IMAGE="/opt/apps/containers/users/ncshare-science-course.sif"
 apptainer exec \
   --bind "$PWD:$PWD" \
   "$COURSE_IMAGE" \

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-COURSE_IMAGE="${1:-${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}}"
+COURSE_IMAGE="${1:-${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}}"
 MODE="${2:-cpu}"
 
 # Open MPI inside the image is not built against this cluster's Slurm PMI. An

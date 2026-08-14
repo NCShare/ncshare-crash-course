@@ -18,7 +18,7 @@
 
 set -euo pipefail
 
-COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 

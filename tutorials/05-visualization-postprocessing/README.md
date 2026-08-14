@@ -39,7 +39,7 @@ data to figure explicit.
 ```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 
 apptainer exec "$COURSE_IMAGE" python -c \
   "import h5py, matplotlib, numpy; print('visualization stack OK')"

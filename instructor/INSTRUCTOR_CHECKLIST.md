@@ -18,7 +18,7 @@ Complete this checklist at least one week before the workshop. The primary cours
 - [x] Run `apptainer test` and `containers/verify_container.sh IMAGE cpu`.
 - [x] In an H200 allocation, run `containers/verify_container.sh IMAGE gpu`.
 - [ ] Retain the definition, CI log, SIF, SHA-256 checksum, image labels, `/opt/course-build/conda-explicit.txt`, and `/opt/course-build/pip-freeze.txt`.
-- [x] Stage the reviewed image at the published path, normally `/opt/apps/containers/user/ncshare-science-course.sif`, and confirm every compute/Open OnDemand node can read it.
+- [x] Stage the reviewed image at the published path, normally `/opt/apps/containers/users/ncshare-science-course.sif`, and confirm every compute/Open OnDemand node can read it.
 - [ ] Publish the checksum and image path before participants begin.
 
 ## Recorded NCShare hardware

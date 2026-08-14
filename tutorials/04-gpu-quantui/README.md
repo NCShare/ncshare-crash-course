@@ -68,7 +68,7 @@ use the device. A check at each layer makes failures easier to locate.
 ```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 mkdir -p "$COURSE_WORK"/{logs,quantui}
 ```
 
@@ -163,7 +163,7 @@ Inside it:
 
 ```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 bash "$COURSE_ROOT/containers/verify_container.sh" \
   "$COURSE_IMAGE" gpu
 exit
@@ -278,7 +278,7 @@ srun -p workshop \
 # The prompt is now on the allocated GPU node.
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
 
 for p in small medium crossover large; do
