@@ -37,17 +37,13 @@ tutorials/05-visualization-postprocessing/
 
 ## Path conventions
 
-The examples use four locations deliberately:
+The examples use the following locations, 
 
-- `$HOME/ncshare-crash-course` for the small course repository.
-- `/work/$USER/ncshare-crash-course` for active inputs and results; NCShare
-  currently purges files older than 75 days from `/work`.
+- `/work/$USER/ncshare-crash-course` for active inputs and results; NCShare currently purges files older than 75 days from `/work`.
 - `/opt/apps/containers/user` for an HPC-team-staged, shared course SIF.
-- Job-local `/scratch` only for temporary, high-I/O data that is copied out
-  before a job ends.
+- Job-local `/scratch` only for temporary, high-I/O data that is copied out before a job ends.
 
-Override the defaults when needed:
-
+Override the defaults when needed,
 ```bash
 export COURSE_WORK="/work/$USER/ncshare-crash-course"
 export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
