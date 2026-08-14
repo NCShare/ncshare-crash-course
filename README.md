@@ -49,7 +49,6 @@ The examples use four locations deliberately:
 Override the defaults when needed:
 
 ```bash
-export COURSE_ROOT="$HOME/ncshare-crash-course"
 export COURSE_WORK="/work/$USER/ncshare-crash-course"
 export COURSE_IMAGE="/opt/apps/containers/user/ncshare-science-course.sif"
 ```

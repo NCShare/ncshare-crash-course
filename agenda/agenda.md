@@ -27,14 +27,14 @@ By the end of the workshop, participants can:
 
 ## Agenda
 
-| Time | Session |
-| --- | --- |
-| 9:00 – 10:00 | Welcome and introduction |
-| 10:00 – 11:00 | Access and orientation |
-| 11:00 – 12:00 | Storage and data movement |
-| 12:00 – 1:00 | Lunch |
-| 1:00 – 1:30 | Application containers |
-| 1:30 – 2:30 | inoisy+ on CPUs |
-| 2:30 – 3:30 | QuantUI on GPUs |
-| 3:30 – 4:30 | Scientific visualization and post-processing |
-| 4:30 – 5:00 | Wrap-up |
+| Time          | Session                                      |
+| ------------- | -------------------------------------------- |
+| 9:00 – 10:00  | Welcome and introduction                     |
+| 10:00 – 11:00 | Access and orientation                       |
+| 11:00 – 12:00 | Storage and data movement                    |
+| 12:00 – 1:00  | Lunch                                        |
+| 1:00 – 1:30   | Application containers                       |
+| 1:30 – 2:30   | inoisy+ on CPUs                              |
+| 2:30 – 3:30   | QuantUI on GPUs                              |
+| 3:30 – 4:30   | Scientific visualization and post-processing |
+| 4:30 – 5:00   | Wrap-up                                      |

@@ -113,8 +113,8 @@ The instructor will replace the `<COURSE_REPOSITORY_URL>` placeholder below befo
 
 ```bash
 cd /work/$USER 
-git clone <COURSE_REPOSITORY_URL> 
-cd NCShareCourse 
+git clone <COURSE_REPOSITORY_URL> ncshare-crash-course
+cd ncshare-crash-course 
 ```
 
 These commands run on the NCShare login node. `cd` changes directory and `git clone` downloads a working copy of the course files. Replace the
