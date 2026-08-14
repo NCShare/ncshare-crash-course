@@ -3,7 +3,8 @@
 
 This is the *second* dataset the GPU session hands to the visualization
 session. Where ``run_cpu_gpu_comparison.py`` produces wall-time numbers for a
-bar chart, this produces a geometry-optimization trajectory for a line plot:
+paired timing comparison, this produces a geometry-optimization trajectory for
+a line plot:
 the SCF energy at each BFGS step as the structure relaxes toward its minimum.
 
 It is a **CPU** calculation. QuantUI's ``optimize_geometry`` drives PySCF's
@@ -30,7 +31,7 @@ import os
 import time
 from pathlib import Path
 
-# Starting geometries (Angstrom). These are deliberately a little off their
+# Starting geometries (Å). These are deliberately a little off their
 # minimum so the optimizer takes several visible steps -- a one-step relaxation
 # makes a boring line. Coordinates are plain lists so this file needs no numpy.
 _WATER_PERTURBED = (
@@ -82,7 +83,7 @@ def main() -> None:
         "--fmax",
         type=float,
         default=0.05,
-        help="Force convergence threshold in eV/Angstrom (default 0.05).",
+        help="Force convergence threshold in eV/Å (default 0.05).",
     )
     parser.add_argument(
         "--steps",
@@ -98,9 +99,7 @@ def main() -> None:
 
     spec = PRESETS[args.preset]
     basis = args.basis or spec["basis"]
-    label = spec["label"]
-    if args.basis:
-        label = f"{label.split()[0]}  {args.method}/{args.basis}"
+    label = f"{spec['label'].split()[0]}  {args.method}/{basis}"
 
     molecule = Molecule(
         atoms=spec["atoms"],

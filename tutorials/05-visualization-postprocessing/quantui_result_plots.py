@@ -57,12 +57,13 @@ _SAMPLE_DIR = _THIS_DIR / "data" / "sample_quantui"
 
 
 def find_result_source(explicit: Optional[os.PathLike | str] = None) -> tuple[Path, bool]:
-    """Return ``(directory, is_sample)`` to read QuantUI result JSON from.
+    """Return ``(directory, is_sample)`` for CPU/GPU comparison JSON.
 
     Resolution order mirrors the visualization notebook's own fallback logic:
 
     1. an explicit path, if given;
-    2. ``$COURSE_WORK/quantui`` (where the GPU session wrote real results); and
+    2. ``$COURSE_WORK/quantui`` when it contains CPU/GPU comparison results;
+       and
     3. the bundled sample directory, so the lesson still runs after a queue
        delay -- exactly as the inoisy+ fallback dataset does.
 
@@ -74,11 +75,29 @@ def find_result_source(explicit: Optional[os.PathLike | str] = None) -> tuple[Pa
     course_work = os.environ.get("COURSE_WORK")
     if course_work:
         candidate = Path(course_work) / "quantui"
-        has_real = candidate.is_dir() and (
-            any(candidate.glob("cpu_gpu_comparison_*.json"))
-            or any(candidate.glob("geometry_optimization_*.json"))
+        has_real = candidate.is_dir() and any(
+            candidate.glob("cpu_gpu_comparison_*.json")
         )
         if has_real:
+            return candidate, False
+
+    return _SAMPLE_DIR, True
+
+
+def find_trajectory_source(
+    explicit: Optional[os.PathLike | str] = None,
+    preset: str = "water",
+) -> tuple[Path, bool]:
+    """Return a trajectory directory independently of the timing source."""
+    if explicit is not None:
+        candidate = Path(explicit)
+        if (candidate / f"geometry_optimization_{preset}.json").is_file():
+            return candidate, False
+
+    course_work = os.environ.get("COURSE_WORK")
+    if course_work:
+        candidate = Path(course_work) / "quantui"
+        if (candidate / f"geometry_optimization_{preset}.json").is_file():
             return candidate, False
 
     return _SAMPLE_DIR, True
@@ -188,9 +207,11 @@ def load_trajectory(
     source: Optional[os.PathLike | str] = None,
     preset: str = "water",
 ) -> Optional[dict]:
-    """Load ``geometry_optimization_<preset>.json`` if present, else ``None``."""
+    """Load a trajectory, falling back independently to the bundled sample."""
     directory = Path(source) if source is not None else find_result_source()[0]
     path = directory / f"geometry_optimization_{preset}.json"
+    if not path.is_file() and directory.resolve() != _SAMPLE_DIR.resolve():
+        path = _SAMPLE_DIR / f"geometry_optimization_{preset}.json"
     if not path.is_file():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
@@ -223,7 +244,7 @@ def plot_relaxation_trajectory(
     # Emphasise the converged endpoint.
     ax.plot(steps[-1], energies[-1], marker="o", markersize=9, color=GPU_COLOR)
     ax.annotate(
-        f"{energies[-1]:.5f} Ha",
+        f"{energies[-1]:.5f} Hartree",
         (steps[-1], energies[-1]),
         textcoords="offset points",
         xytext=(-6, 10),
@@ -243,9 +264,9 @@ def plot_relaxation_trajectory(
     rmsd = traj.get("rmsd_angstrom")
     subtitle_bits = [f"{formula}  {method}/{basis}"]
     if de is not None:
-        subtitle_bits.append(f"deltaE = {de:+.4f} Ha")
+        subtitle_bits.append(f"ΔE = {de:+.4f} Hartree")
     if rmsd is not None:
-        subtitle_bits.append(f"RMSD = {rmsd:.3f} A")
+        subtitle_bits.append(f"RMSD = {rmsd:.3f} Å")
     ax.set_title(
         "Geometry relaxation: energy vs step",
         color=INK,
@@ -288,8 +309,11 @@ def plot_relaxation_trajectory(
 
 
 def save_figure(fig: plt.Figure, path: os.PathLike | str) -> Path:
-    """Save PNG (raster, for slides) and PDF (vector) next to each other."""
+    """Save PNG and PDF together, preferring ``$COURSE_WORK/visualization``."""
     path = Path(path)
+    if not path.is_absolute() and os.environ.get("COURSE_WORK"):
+        path = Path(os.environ["COURSE_WORK"]) / "visualization" / path
+    path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path.with_suffix(".png"), dpi=150, bbox_inches="tight")
     fig.savefig(path.with_suffix(".pdf"), bbox_inches="tight")
     return path

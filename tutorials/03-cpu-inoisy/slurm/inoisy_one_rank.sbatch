@@ -24,13 +24,15 @@ mkdir -p "$OUTDIR"
 echo "job_id=$SLURM_JOB_ID host=$(hostname) ranks=$SLURM_NTASKS"
 echo "course_image=$COURSE_IMAGE"
 apptainer inspect "$COURSE_IMAGE" \
-  | grep -E 'BaseImage|HYPREVersion|inoisy4dCommit|BlueprintVersion' || true
+  | grep -E 'BaseImage|HYPREVersion|inoisy4dSelection|BlueprintVersion' || true
+echo -n "inoisy4d_resolved_commit="
+apptainer exec "$COURSE_IMAGE" cat /opt/course-build/inoisy4d-commit.txt
 
 # NCShare's documented single-node pattern runs mpirun inside the image.
 apptainer exec --cleanenv \
   --bind "$COURSE_WORK:$COURSE_WORK" \
   "$COURSE_IMAGE" \
-  mpirun -n 1 inoisy4d \
+  mpirun -n "$SLURM_NTASKS" inoisy4d \
   -nl 16 -nj 16 -ni 16 -nk 16 \
   -pgrid 1 1 1 1 \
   -solver 0 \

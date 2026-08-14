@@ -7,16 +7,18 @@ workflow is optional bonus material for other clusters.
 ## Access and capacity
 
 - [ ] All participants have NCShare accounts and registered SSH public keys.
-- [ ] GPU participants have access to `gpu` or `interactive-gpu`.
-- [ ] A temporary `workshop` partition/reservation is available, or all Slurm
-  files use the approved teaching partition.
+- [ ] GPU participants have access to the temporary `workshop` partition for
+  the event. If that reservation is unavailable, choose one documented
+  alternative (`interactive-gpu` for short interactive work or `gpu` for
+  preemptible batch work) and update every teaching command consistently.
 - [ ] Class CPU/GPU concurrency limits can accommodate the planned jobs.
 - [ ] Open OnDemand JupyterLab accepts the custom course SIF.
 
 ## Build and stage the course image
 
 - [ ] Review `containers/ncshare-science-course.def`, including base image,
-  upstream licenses, pinned commits, package sources, and comments.
+  upstream licenses, the pinned QuantUI release, the inoisy4d source-selection
+  policy, package sources, and comments.
 - [x] Confirm that the CUDA 12.8.1/Ubuntu 24.04 base remains appropriate for
   the NCShare H200 driver. **Confirmed.** See the recorded values below;
   re-verify these before each offering rather than assuming they still hold.
@@ -40,15 +42,16 @@ driver upgrade or a MIG reconfiguration changes what the GPU lab does.
 
 | Fact | Value | Why it matters |
 |---|---|---|
-| GPU nodes | 4, each with 8x NVIDIA H200 SXM 141 GB (32 total) | Ample for a ~10-person class; GPU contention is not a scheduling risk |
-| GPU node CPU/RAM | Intel Xeon Platinum 8568Y+, ~96 physical cores, 2 TB RAM | ~12 cores per GPU, so `--cpus-per-task=4` is comfortable |
+| GPU nodes | 4, each with 8x NVIDIA H200 SXM 141 GB (32 total) | The temporary `workshop` reservation was reported as one 8-GPU node; plan at most eight simultaneous one-GPU jobs unless the reservation changes |
+| GPU node CPU/RAM | Intel Xeon Platinum 8568Y+, ~96 physical cores / 192 schedulable CPU threads, 2 TB RAM | About 12 physical cores per GPU; keep CPU requests proportional and record the allocated count |
 | Compute capability | 9.0 (Hopper) | Covered by prebuilt `cuda12x` wheels; no local `nvcc` needed |
 | CPU nodes | 8x AMD EPYC 7543, ~64 physical cores, 512 GB RAM each | Sizing for the MPI lab |
 | Interconnect | **10/40 Gbps Ethernet, not InfiniBand** | Keep inoisy+ single-node; see the MPI warning below |
 | Storage | 400 TB FreeNAS NFS | Avoid many-small-file I/O patterns |
 | Driver | **580.126.20** (measured 2026-08-05) | CuPy reports driver API 13000 against runtime 12090 — works, and confirms the `cuda12x` choice |
 | GPU memory | 143771 MiB | Verification molecules use a tiny fraction |
-| Verified node / partition | `compute-gpu-02` / partition `gpu` | Partition confirmed working for interactive `salloc` |
+| Verified general path | `compute-gpu-02` / partition `gpu` on 2026-08-05 | General interactive allocation confirmed working |
+| Reported workshop path | partition `workshop`, `--gres=gpu:h200:1` on 2026-08-12 | Reconfirm the temporary reservation immediately before class |
 
 - [x] Capture `nvidia-smi` and record the driver version. **Done:** 580.126.20,
   compute capability 9.0, H200 143771 MiB.
@@ -56,11 +59,10 @@ driver upgrade or a MIG reconfiguration changes what the GPU lab does.
   not blocking).
 - [ ] Record the Apptainer version and whether `--nv` uses the legacy
   `nvliblist.conf` path or `--nvccli` / `nvidia-container-cli`.
-- [ ] **Confirm the `--gres` type string via an actual `sbatch`.** Interactive
-  `salloc` on partition `gpu` is proven; batch submission with
-  `--gres=gpu:h200:1` is not yet exercised. `gpu:1` is the fallback.
-- [ ] Confirm whether the workshop-day reservation supersedes partition `gpu`,
-  then make every `.sbatch` file agree.
+- [x] Confirm the requested GPU type as `--gres=gpu:h200:1`. This is also the
+  current form in the official NCShare GPU guide.
+- [ ] Reconfirm that the temporary `workshop` reservation is active on the
+  teaching date. The tracked `.sbatch` files consistently use `workshop`.
 
 **GPU path verified end to end on 2026-08-05.** QuantUI's standalone GPU image
 (v0.6.1) passed all seven checks on an NCShare H200 — device visible through
@@ -108,10 +110,10 @@ Do not "upgrade" to `cuda13x` without confirming every GPU node's driver.
 
 ## Course-repository edits before publishing
 
-- [ ] Replace `<COURSE_REPOSITORY_URL>` in `tutorials/00-prework.md`.
+- [x] Publish the course clone URL in `tutorials/00-prework.md`.
 - [ ] Add the final year, room, contacts, and support channel to the agenda.
-- [ ] Choose a license for the new course material; retain all external
-  project licenses and citations.
+- [x] Retain the repository's MIT `LICENSE` for the course material and keep
+  all external project licenses and citations.
 - [ ] Replace the default `COURSE_IMAGE` path if the HPC team stages the SIF
   elsewhere.
 - [ ] Review the resolved inoisy4d commit and update pinned source commits

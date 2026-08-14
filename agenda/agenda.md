@@ -14,10 +14,10 @@ environment, choose resources, submit a job, and continue my analysis.” The da
 
 ## Before the workshop
 
-Participants need an active NCShare account, SSH key-based login, a laptop with
-an SSH client, and the course repository. GPU access should be requested in
-advance. A partner-based path is available for participants still waiting for
-access.
+Participants need an active NCShare account, a laptop, and the course
+repository. They may connect through SSH key-based login or use Open OnDemand
+in a browser. GPU access should be requested in advance. A partner-based path
+is available for participants still waiting for access.
 
 ## Learning outcomes
 
@@ -137,10 +137,13 @@ expected outputs, and troubleshooting checkpoints.
 
 ### 3:30-4:30 — Session 4: Scientific visualization and post-processing
 
-Launch Jupyter from the same SIF, inspect the inoisy+ HDF5 result without
-loading the full 4D array, plot distributions and slices, select honest
-normalization and color maps, run the containerized upstream
-GRF-to-emissivity converter, and export a reproducible PNG/PDF figure.
+Launch Jupyter from the same SIF and use the previous sessions' inoisy+ and
+QuantUI products to make four focused figures. Students inspect HDF5 without
+loading the full 4D array, choose color and normalization from data meaning,
+compare CPU/GPU timings with an explicit denominator, show ordered scientific
+change, and export figures plus a reproducibility manifest. The upstream
+GRF-to-emissivity converter remains a separate, recorded CPU post-processing
+step.
 
 ### 4:30-5:00 — Wrap-up and next steps
 

@@ -79,8 +79,9 @@ section to a requirement:
    policy is convenient for this actively developed course application, but
    two builds on different dates may contain different source revisions.
 4. **Python stack:** a Python 3.11 environment supplies Jupyter and plotting
-   libraries. QuantUI is checked out at a recorded commit and installed with
-   CUDA 12.x `gpu4pyscf`, CuPy, and cuTENSOR wheels.
+   libraries. QuantUI `0.6.1` is installed from PyPI with its CUDA 12.x
+   `gpu4pyscf`, CuPy, and cuTENSOR dependencies. A matching tagged source
+   checkout is retained separately for examples and source inspection.
 5. **Evidence:** labels, source commit files, resolved conda/pip manifests,
    `%test`, and a SHA-256 checksum make the built artifact inspectable.
 
@@ -127,8 +128,9 @@ using the base image. Inside that build environment:
   installed into `/opt/hypre`;
 - inoisy4d source is cloned into `/opt/inoisy4d` and compiled there against the
   packaged MPI, parallel HDF5, GSL, and HYPRE; and
-- the Python environment is created at `/opt/course-env`, while QuantUI source
-  is retained at `/opt/QuantUI`.
+- the Python environment is created at `/opt/course-env`, while a QuantUI
+  source checkout is retained at `/opt/QuantUI`. The installed QuantUI package
+  comes from PyPI rather than from that checkout.
 
 Those `/opt/...` paths are paths **inside the image**, not directories students
 should create in their NCShare home directories. The completed filesystem is
@@ -149,10 +151,11 @@ source, an instructor must:
 
 Because this definition selects the latest inoisy4d default branch, rebuilding
 is sufficient to obtain a newer revision, but the resulting commit and SIF
-checksum must be reviewed. QuantUI is pinned to a specific commit; selecting a
-newer QuantUI version requires changing `QUANTUI_COMMIT` in the definition
-before rebuilding. For a student experiment, the optional module-based lesson
-is often quicker than rebuilding the shared class image.
+checksum must be reviewed. QuantUI is pinned to a released package version;
+selecting a newer release requires changing `QUANTUI_VERSION` in the
+definition, rebuilding, and rerunning the GPU checks. For a student experiment,
+the optional module-based lesson is often quicker than rebuilding the shared
+class image.
 
 ## 10-18 min — Understand the build script
 
@@ -234,12 +237,19 @@ Record:
 
 ```bash
 sha256sum "$COURSE_IMAGE"
-apptainer inspect "$COURSE_IMAGE" | grep -E 'BaseImage|HYPRE|Commit|Blueprint'
+apptainer inspect "$COURSE_IMAGE" \
+  | grep -E 'BaseImage|HYPREVersion|inoisy4dSelection|QuantUIVersion|BlueprintVersion'
+apptainer exec "$COURSE_IMAGE" \
+  cat /opt/course-build/inoisy4d-commit.txt
+apptainer exec "$COURSE_IMAGE" \
+  cat /opt/course-build/quantui-version.txt
 ```
 
 The instructor publishes the expected checksum. A mismatch is not automatically
 malicious, but it means the class is not using the same artifact and should
-stop to identify why.
+stop to identify why. Labels describe the build recipe; the files under
+`/opt/course-build` record the exact inoisy4d revision and installed QuantUI
+version resolved in the finished image.
 
 ## Run MPI from the image
 
@@ -257,18 +267,24 @@ env $(env | sed -n 's/^\(SLURM[A-Z_]*\)=.*/-u \1/p') \
   apptainer exec "$COURSE_IMAGE" inoisy4d --help
 ```
 
-`verify_container.sh` wraps its `inoisy4d` check this way. `--cleanenv` also
-works, but do not use it with `--nv`: it discards `CUDA_VISIBLE_DEVICES` and the
-container then sees every GPU on the node instead of the ones Slurm granted.
+`verify_container.sh` wraps its `inoisy4d` check this way. `--cleanenv` is a
+second way to remove inherited variables. In a GPU job, it also removes useful
+Slurm variables such as `CUDA_VISIBLE_DEVICES` unless the job deliberately
+passes them back with `--env`. The course GPU job does this explicitly; do not
+assume that `--nv` recreates scheduler metadata.
 
 **Single node (the workshop pattern).** Use the image's own `mpirun`. Open MPI
 is its own launcher here, never touches Slurm PMI, and still reads the
 allocation for its slot count, so no environment surgery is needed:
 
 ```bash
-apptainer exec "$COURSE_IMAGE" mpirun -n "$SLURM_CPUS_PER_TASK" \
+apptainer exec "$COURSE_IMAGE" mpirun -n "$SLURM_NTASKS" \
   inoisy4d -n 64 -nk 128 -pgrid 1 1 1 4 -solver 0 -o output/
 ```
+
+`SLURM_NTASKS` is the number of MPI ranks. `SLURM_CPUS_PER_TASK` is the number
+of CPU cores assigned to each rank; substituting it for the rank count would
+launch the wrong number of processes whenever those values differ.
 
 **Multiple nodes.** `mpirun` cannot start ranks on other nodes from inside the
 container, so hand the launch to Slurm's PMIx plugin and let each rank attach to

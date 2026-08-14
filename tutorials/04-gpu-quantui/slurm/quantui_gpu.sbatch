@@ -40,23 +40,31 @@ if [[ ! -f "$COURSE_IMAGE" ]]; then
 fi
 
 mkdir -p "$COURSE_WORK/quantui"
-QUANTUI_COMMIT="$(
+QUANTUI_SOURCE_COMMIT="$(
   apptainer exec "$COURSE_IMAGE" \
     cat /opt/course-build/quantui-commit.txt
+)"
+QUANTUI_VERSION="$(
+  apptainer exec "$COURSE_IMAGE" \
+    cat /opt/course-build/quantui-version.txt
 )"
 
 echo "job_id=$SLURM_JOB_ID host=$(hostname)"
 echo "course_image=$COURSE_IMAGE"
-echo "quantui_commit=$QUANTUI_COMMIT"
+echo "quantui_version=$QUANTUI_VERSION"
+echo "quantui_source_checkout_commit=$QUANTUI_SOURCE_COMMIT"
 
 # --gres allocates the GPU; --nv exposes the host NVIDIA driver and devices
 # inside the container. Both are required, and neither alone proves offload.
 apptainer exec --nv --cleanenv \
+  --env "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-}" \
   "$COURSE_IMAGE" \
   nvidia-smi --query-gpu=name,driver_version,memory.total \
     --format=csv,noheader
 
 apptainer exec --nv --cleanenv \
+  --env "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-}" \
+  --env "QUANTUI_SETTINGS_PATH=$QUANTUI_SETTINGS_PATH" \
   "$COURSE_IMAGE" \
   quantui gpu check
 
@@ -65,8 +73,11 @@ apptainer exec --nv --cleanenv \
   --bind "$COURSE_WORK:$COURSE_WORK" \
   --env "COURSE_WORK=$COURSE_WORK" \
   --env "COURSE_IMAGE=$COURSE_IMAGE" \
-  --env "QUANTUI_COMMIT=$QUANTUI_COMMIT" \
+  --env "CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-}" \
+  --env "QUANTUI_VERSION=$QUANTUI_VERSION" \
+  --env "QUANTUI_SOURCE_CHECKOUT_COMMIT=$QUANTUI_SOURCE_COMMIT" \
   --env "SLURM_JOB_ID=$SLURM_JOB_ID" \
+  --env "SLURM_CPUS_PER_TASK=$SLURM_CPUS_PER_TASK" \
   --env "OMP_NUM_THREADS=$OMP_NUM_THREADS" \
   --env "QUANTUI_SETTINGS_PATH=$QUANTUI_SETTINGS_PATH" \
   "$COURSE_IMAGE" \

@@ -1,35 +1,34 @@
 # Hands-on: Scientific visualization and containerized post-processing
 
 **Guided time:** 60 minutes  
-**Inputs:** containerized inoisy+ HDF5 output; a small fallback is included  
-**Tools inside the course SIF:** JupyterLab, NumPy, h5py, Matplotlib, pandas,
-Seaborn, and the unmodified inoisy+ emissivity converter
+**Inputs:** inoisy+ HDF5 fields and QuantUI JSON results from the previous labs
+**Tools inside the course SIF:** JupyterLab, NumPy, h5py, Matplotlib, and the
+unmodified inoisy+ emissivity converter
 
 ## Learning goals
 
 By the end, you can:
 
-- launch a reproducible Jupyter environment from the same SIF as the simulation;
-- inspect HDF5 structure and metadata without loading a full 4D field;
-- choose a slice or reduction that answers a specific question;
-- match sequential, diverging, cyclic, and qualitative colors to data meaning;
-- label quantities, units, normalization, and provenance;
-- run the upstream GRF-to-emissivity post-processor through Apptainer; and
-- export reproducible raster and vector figures.
+- begin with a scientific question and inspect data meaning and provenance;
+- match visual encoding to spatial fields, paired timings, and ordered change;
+- choose color, normalization, clipping, and logarithmic scales deliberately;
+- make a fair comparison whose denominator and limitations are visible; and
+- export accessible figures with their inputs, settings, and software versions.
 
-The Gaussian random field models time-variable structure; the converter
-standardizes that field and maps it to a positive lognormal disk-plus-jet
-emissivity. Only the minimum scientific context needed to understand the arrays
-is included.
+The unified notebook makes four principal figures: two from inoisy+ and two
+from QuantUI. Each figure introduces a different plotting decision, so the
+lesson does not repeat the same checklist for every dataset.
 
 ## Simulation, post-processing, and visualization
 
 These are separate stages even though they use one container:
 
-- the simulation produced the four-dimensional HDF5 field;
-- post-processing derives emissivity fields from that result; and
-- visualization selects a meaningful slice or summary and encodes it as a
-  figure.
+- the inoisy+ simulation produces a four-dimensional HDF5 field;
+- a CPU post-processing job derives standardized and emissivity fields;
+- the QuantUI lab produces paired CPU/GPU timings and, optionally, a CPU-only
+  geometry-relaxation trajectory; and
+- visualization selects meaningful slices or summaries and encodes them as
+  figures.
 
 Keeping the stages separate avoids rerunning an expensive simulation merely to
 change a color map or figure label. It also makes the transformation from raw
@@ -43,7 +42,7 @@ export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/user/ncshare-science-course.sif}"
 
 apptainer exec "$COURSE_IMAGE" python -c \
-  "import h5py, matplotlib, numpy, pandas, seaborn; print('visualization stack OK')"
+  "import h5py, matplotlib, numpy; print('visualization stack OK')"
 ```
 
 The first three lines establish the same repository, workspace, and image paths
@@ -60,8 +59,9 @@ For a module-based cluster, see the
 
 ## 2. Run the upstream post-processor
 
-The notebook can run it interactively, but a batch job records a clearer
-cluster workflow:
+Run the converter as a separate CPU batch job. Keeping this step outside the
+notebook records the transformation in a Slurm log and prevents a plotting
+rerun from silently recomputing scientific data:
 
 ```bash
 mkdir -p "$COURSE_WORK/logs"
@@ -132,42 +132,51 @@ host directories are bound so Jupyter can read the notebook and data. The
 `--no-browser` option prevents a compute node from trying to open its own web
 browser; in normal class use, Open OnDemand handles the browser connection.
 
-The notebook searches for input in this order:
+For each input type, the notebook checks an explicit environment-variable
+override, then the expected location under `$COURSE_WORK`, and finally the
+appropriate bundled fallback:
 
-1. `INOISY_H5`, if set;
-2. the newest four-rank result under
-   `/work/$USER/ncshare-crash-course/inoisy/four-ranks`; and
-3. the included tiny synthetic fallback.
+| Input | Override | Normal result pattern |
+|---|---|---|
+| Raw inoisy+ field | `INOISY_H5` | `inoisy/four-ranks/*.h5` |
+| Processed inoisy+ field | `INOISY_EMISSIVITY_H5` | `inoisy/postprocessed/*emissivity*.h5` |
+| QuantUI JSON directory | `QUANTUI_RESULTS` | `quantui/cpu_gpu_comparison_*.json` and `quantui/geometry_optimization_water.json` |
 
-The fallback matches the inoisy+ HDF5 schema but is not a solver result. It
-exists so queue delays do not stop the visualization lesson.
+The two inoisy+ figures declare their raw or processed source independently;
+the notebook never claims independently selected files are the same run. The
+inoisy+ fallbacks are synthetic. Bundled QuantUI timings are real NCShare
+measurements, while the geometry trajectory is synthetic and visibly
+watermarked.
 
-An environment variable set for one command can select a specific real input:
+Environment variables can select specific inputs before Jupyter starts:
 
 ```bash
 export INOISY_H5="/work/$USER/ncshare-crash-course/inoisy/four-ranks/FILE.h5"
+export INOISY_EMISSIVITY_H5="/work/$USER/ncshare-crash-course/inoisy/postprocessed/FILE.h5"
+export QUANTUI_RESULTS="/work/$USER/ncshare-crash-course/quantui"
 ```
 
-Replace `FILE.h5` with an existing filename. The notebook reports which input
-it selected; check that message before interpreting a plot.
+Replace each `FILE.h5` with an existing filename. Set only the overrides you
+need. The notebook reports every selected input; read that report before
+interpreting a plot.
 
 ## Plot the QuantUI results from the GPU session
 
-The GPU session produced two datasets in `$COURSE_WORK/quantui/`. Turn them into
-figures with the companion notebook
-[`plot_quantui_results.ipynb`](plot_quantui_results.ipynb), which is deliberately
-thin — every plotting decision lives in the version-controlled sidecar
-[`quantui_result_plots.py`](quantui_result_plots.py), and the notebook only
-imports and calls it.
+The GPU and follow-up CPU work can produce two kinds of JSON under
+`$COURSE_WORK/quantui/`. The same
+[`scientific_visualization.ipynb`](scientific_visualization.ipynb) used for the
+inoisy field turns them into figures. Keeping both scientific workflows in one
+notebook lets each plot teach a distinct lesson without repeating setup,
+plotting principles, or export steps.
 
 Two figures:
 
-1. **CPU vs GPU wall time** — a grouped bar chart across the basis sets you swept,
-   showing the GPU bars staying nearly flat while the CPU cost for the largest
-   basis explodes. The crossover is where the two bars level.
-2. **Geometry-relaxation trajectory** — SCF energy at each optimization step,
-   falling steeply then leveling as the structure reaches its minimum. Generate
-   the data (a CPU calculation — no GPU needed) with:
+1. **CPU vs GPU wall time** — a connected-dot plot on a logarithmic time axis.
+   It makes the paired calculation and `CPU time / GPU time` comparison explicit
+   without implying that the unordered calculation categories form a trend.
+2. **Geometry-relaxation trajectory** — energy above the final recorded value
+   at each ordered optimization step. Generate the data from the CPU-only Open
+   OnDemand allocation already running this notebook:
 
    ```bash
    apptainer exec --cleanenv \
@@ -178,11 +187,22 @@ Two figures:
      --preset water
    ```
 
-If a job is still queued, the notebook falls back to bundled sample data under
+If a job is still queued, the unified notebook falls back by data type to
+bundled samples under
 [`data/sample_quantui/`](data/sample_quantui/) so the plotting lesson still runs
-— the figure title tells you which source you are looking at. (The bar-chart
-sample is real NCShare measurement; the trajectory sample is a clearly-labeled
-synthetic placeholder until you generate a real one.)
+— the notebook reports which source each figure uses. The timing samples are
+real NCShare measurements; the trajectory is a clearly labeled synthetic
+placeholder until you generate a real one.
+
+### Optional focused QuantUI notebook
+
+The preserved [`plot_quantui_results.ipynb`](plot_quantui_results.ipynb) and
+[`quantui_result_plots.py`](quantui_result_plots.py) provide a shorter QuantUI-
+only path. Its grouped bars on a linear axis are an intentional alternative to
+the unified notebook's connected dots on a log axis. Comparing the two is a
+useful critique exercise: bars emphasize absolute magnitude from a zero
+baseline, while the log-axis design emphasizes ratios across a wide range.
+The unified notebook remains the primary Session 4 path.
 
 ## Container-specific reproducibility check
 
@@ -190,14 +210,19 @@ Before exporting the final figure, record:
 
 ```bash
 apptainer inspect "$COURSE_IMAGE" \
-  | grep -E 'BaseImage|inoisy4dCommit|QuantUICommit|BlueprintVersion'
+  | grep -E 'BaseImage|inoisy4dSelection|QuantUIVersion|BlueprintVersion'
+apptainer exec "$COURSE_IMAGE" \
+  cat /opt/course-build/inoisy4d-commit.txt
+apptainer exec "$COURSE_IMAGE" \
+  cat /opt/course-build/quantui-version.txt
 cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
 ```
 
-The first command selects relevant image labels. The second uses a published
-checksum file when available and computes the checksum directly otherwise.
-Record the value; do not paste the fallback operator itself into a methods
-section.
+The first command selects recipe labels. The next two commands record the exact
+inoisy4d revision and installed QuantUI release. The final command uses a
+published checksum file when available and computes the checksum directly
+otherwise. Record the resulting value; do not paste the fallback operator
+itself into a methods section.
 
 Keep that identity with the input HDF5 path, time/slice selection, percentile
 limits, plotting code, and exported figure.

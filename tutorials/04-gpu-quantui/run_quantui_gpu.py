@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from importlib.metadata import version as package_version
 from pathlib import Path
 
 from quantui import Molecule, run_in_session
@@ -48,7 +49,11 @@ def main() -> None:
         "gpu_name": result.gpu_name,
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
         "course_image": os.environ.get("COURSE_IMAGE"),
-        "quantui_commit": os.environ.get("QUANTUI_COMMIT"),
+        "quantui_version": package_version("quantui"),
+        "quantui_source_checkout_commit": os.environ.get(
+            "QUANTUI_SOURCE_CHECKOUT_COMMIT"
+        ),
+        "cpus_requested": os.environ.get("SLURM_CPUS_PER_TASK"),
     }
 
     course_work = Path(

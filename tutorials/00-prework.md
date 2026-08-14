@@ -12,11 +12,11 @@ laptop and partly after connecting to NCShare.
 
 1. [Activate your NCShare account](#1-activate-your-ncshare-account)
 2. [Configure SSH](#2-configure-ssh)
-   - [2b. Windows users: pick an SSH client](#2b-windows-users-pick-an-ssh-client)
+   - [2a. Windows users: pick an SSH client](#2a-windows-users-pick-an-ssh-client)
      - [Generating a key with built-in OpenSSH](#generating-a-key-with-built-in-openssh)
      - [Using Bitvise instead](#using-bitvise-instead)
      - [Check it worked](#check-it-worked)
-   - [2c. No-install alternative: Open OnDemand](#2c-no-install-alternative-open-ondemand)
+   - [2b. No-install alternative: Open OnDemand](#2b-no-install-alternative-open-ondemand)
 3. [Confirm the course container path](#3-confirm-the-course-container-path)
 4. [Clone the course](#4-clone-the-course)
 5. [Optional preparation](#5-optional-preparation)
@@ -60,7 +60,7 @@ detail.
 > see the next section first — the NCShare guide assumes a Unix-style
 > terminal.
 
-### 2b. Windows users: pick an SSH client
+### 2a. Windows users: pick an SSH client
 
 The official NCShare SSH guide is the authority on *what* to configure. This
 section only covers *where* to do it on Windows, which the guide does not
@@ -73,7 +73,7 @@ address. Any of these work; you do not need more than one.
 | **MobaXterm** | Yes (free tier) | Graphical, bundles a terminal and SFTP browser. |
 | **PuTTY** | Yes (free) | Long-established, minimal. Uses its own `.ppk` key format via PuTTYgen. |
 | **WSL** | Yes (Windows feature) | Gives you a real Linux shell; then follow the macOS/Linux instructions unchanged. |
-| **Open OnDemand** | No | Browser only, no SSH client at all. See section 2c. |
+| **Open OnDemand** | No | Browser only, no SSH client at all. See section 2b. |
 
 > **Tip:** If you have no preference, **built-in OpenSSH** is the smallest
 > step, and **Bitvise** is the most forgiving if you would rather click than
@@ -105,9 +105,11 @@ Paste the output of the second command into your NCShare profile.
 5. Save the profile so you do not retype any of this, then click **Log in**.
 
 Two panes open: a terminal, and an SFTP window for dragging files between
-your laptop and NCShare. Both are useful later in the course — the SFTP pane
-makes the difference between `/hpc/home`, `/work`, and `/scratch` easy to see,
-and the port-forwarding tab is one route to a browser-based notebook.
+your laptop and NCShare. Both are useful later in the course: the SFTP pane can
+show shared paths such as `/hpc/home` and `/work`. Job-local `/scratch` is
+created on a compute node for the lifetime of a Slurm job, so do not expect to
+browse it from a login-node SFTP session. Open OnDemand is the supported route
+to the browser-based notebook used in this course.
 
 #### Check it worked
 
@@ -125,13 +127,13 @@ than retrying blindly. The most common causes are:
 - a username typo, or
 - the key not yet being registered.
 
-### 2c. No-install alternative: Open OnDemand
+### 2b. No-install alternative: Open OnDemand
 
 If you cannot install software on your machine — a managed institutional
 laptop, for example — you can reach NCShare through Open OnDemand in a
-browser instead. You will still need an account and a registered SSH key, but
-no local client. Bring your laptop either way; we will have people on hand at
-check-in for both paths.
+browser instead. This browser-only path needs an NCShare account but no local
+SSH client. Direct SSH access still requires the key configured above. Bring
+your laptop either way; we will have people on hand at check-in for both paths.
 
 ---
 
@@ -164,18 +166,17 @@ read-only Apptainer image containing the course software.
 
 ## 4. Clone the course
 
-The instructor will replace the placeholder below before publishing:
+Clone the published course repository:
 
 ```bash
 cd "$HOME"
-git clone <COURSE_REPOSITORY_URL> ncshare-crash-course
+git clone https://github.com/alejandroc137/NCShareCourse.git ncshare-crash-course
 cd "$HOME/ncshare-crash-course"
 ```
 
 These commands run on the NCShare login node. `cd` changes directory and
-`git clone` downloads a working copy of the course files. Replace the
-placeholder URL with the address published by the instructor; do not type the
-angle brackets literally.
+`git clone` downloads a working copy of the course files into a local directory
+named `ncshare-crash-course`.
 
 If the repository has already been cloned, use `git pull --ff-only` instead.
 

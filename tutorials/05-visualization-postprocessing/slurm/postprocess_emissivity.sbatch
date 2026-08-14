@@ -20,11 +20,13 @@ fi
 
 if [[ -z "${SOURCE_H5:-}" ]]; then
   SOURCE_DIR="$COURSE_WORK/inoisy/four-ranks"
+  SOURCE_H5=""
   if [[ -d "$SOURCE_DIR" ]]; then
-    SOURCE_H5="$(find "$SOURCE_DIR" \
-      -maxdepth 1 -type f -name '*.h5' -print | sort | tail -n 1)"
-  else
-    SOURCE_H5=""
+    while IFS= read -r -d '' candidate; do
+      if [[ -z "$SOURCE_H5" || "$candidate" -nt "$SOURCE_H5" ]]; then
+        SOURCE_H5="$candidate"
+      fi
+    done < <(find "$SOURCE_DIR" -maxdepth 1 -type f -name '*.h5' -print0)
   fi
 fi
 
