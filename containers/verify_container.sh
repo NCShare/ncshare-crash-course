@@ -24,7 +24,7 @@ apptainer inspect "$COURSE_IMAGE"
 apptainer test "$COURSE_IMAGE"
 apptainer run "$COURSE_IMAGE"
 apptainer exec "$COURSE_IMAGE" python -c \
-  "import quantui, pyscf, h5py, matplotlib; print('Python imports: OK')"
+  "import numpy, quantui, pyscf, h5py, matplotlib; print('Python imports: OK; NumPy', numpy.__version__)"
 without_slurm_env apptainer exec "$COURSE_IMAGE" inoisy4d --help >/dev/null
 apptainer exec "$COURSE_IMAGE" h5pcc.openmpi -showconfig \
   | grep -i "Parallel HDF5"
