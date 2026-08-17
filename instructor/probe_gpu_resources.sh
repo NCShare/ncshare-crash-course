@@ -131,8 +131,8 @@ if [[ $DO_SUBMIT -eq 1 ]]; then
     echo
     echo "That output answers the remaining open questions at once:"
     echo "  - nvidia-smi -L          -> whether MIG is on (slices vs whole GPUs)"
-    echo "  - driver_version         -> confirms 580.126.20"
-    echo "  - compute_cap            -> confirms 9.0"
+    echo "  - driver_version         -> the host GPU driver in use"
+    echo "  - compute_cap            -> the GPU compute capability"
     echo "  - affinity               -> whether Slurm uses a cpuset or a quota"
   else
     echo "Submission failed: $jid"

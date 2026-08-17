@@ -30,7 +30,7 @@ import time
 from importlib.metadata import version as package_version
 from pathlib import Path
 
-# Measured on an NCShare H200 (driver 580.126.20, compute-gpu-02) on
+# Measured on an NCShare H200 (driver 580.126.20) on
 # 2026-08-05, 1 GPU against 6 affinity-confirmed CPU cores:
 #
 #   H2O  / STO-3G    GPU 1.80 s   CPU  0.35 s   0.20x

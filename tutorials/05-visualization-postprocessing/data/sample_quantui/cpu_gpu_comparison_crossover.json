@@ -1,5 +1,5 @@
 {
-  "_provenance": "Measured on NCShare compute-gpu-02 (H200, driver 580.126.20) on 2026-08-05, 1 GPU vs 6 affinity-confirmed CPU cores. Bundled fallback so the plotting lesson runs without a fresh GPU job.",
+  "_provenance": "Measured on an NCShare H200 node (driver 580.126.20) on 2026-08-05, 1 GPU vs 6 affinity-confirmed CPU cores. Bundled fallback so the plotting lesson runs without a fresh GPU job.",
   "system": "C6H6  RHF/cc-pVDZ",
   "method": "RHF",
   "basis": "cc-pVDZ",

@@ -298,7 +298,7 @@ exit  # release the GPU when the sweep finishes
 
 ### What this looked like on NCShare
 
-Measured 2026-08-05 on `compute-gpu-02` (H200, driver 580.126.20), **1 GPU
+Measured 2026-08-05 on an NCShare H200 node (driver 580.126.20), **1 GPU
 against 6 affinity-confirmed CPU cores**:
 
 | System | GPU | CPU | CPU time / GPU time |
