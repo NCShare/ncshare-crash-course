@@ -198,8 +198,13 @@ NCShare supports two routes.
 ### Route A: build in a compute allocation
 
 ```bash
-export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 srun -p workshop --time=01:00:00 --cpus-per-task=8 --mem=24G --pty bash -l
+```
+
+With the prompt now on a compute node, run the build:
+
+```bash
+export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 bash "$COURSE_ROOT/containers/build_container.sh"
 ```
 

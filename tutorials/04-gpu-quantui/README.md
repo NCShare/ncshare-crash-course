@@ -96,12 +96,12 @@ request one:
 
 ```bash
 srun -p workshop --cpus-per-task=2 --mem=4G --time=00:15:00 --pty bash -l
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 ```
 
-With the prompt now on a compute node, inspect the image:
+With the prompt now on a compute node, set the image path and inspect it:
 
 ```bash
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 apptainer exec "$COURSE_IMAGE" python --version
 apptainer exec "$COURSE_IMAGE" python -c \
   "import quantui, pyscf; print('QuantUI:', quantui.__file__); print('PySCF:', pyscf.__version__)"
@@ -314,19 +314,22 @@ the basis set grows, integral and Fock construction grow faster than the
 overhead, and at some point **the GPU wins**. Where that crossover sits
 depends on the molecule, basis, method, and the specific hardware.
 
-Measure it rather than assuming it:
+Measure it rather than assuming it. This timing loop needs a GPU allocation of
+its own — request one now that the earlier verification shell has been
+released:
 
 ```bash
-# This timing loop needs a GPU allocation of its own. Request one after the
-# earlier verification shell has been released.
 srun -p workshop \
   --gres=gpu:h200:1 \
   --time=00:10:00 \
   --cpus-per-task=6 \
   --mem=16G \
   --pty bash -l
+```
 
-# The prompt is now on the allocated GPU node.
+With the prompt now on the allocated GPU node, run the sweep:
+
+```bash
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
