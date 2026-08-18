@@ -180,31 +180,37 @@ Slurm opens the log before the job body starts, so create the directory first:
 ```bash
 mkdir -p "$COURSE_WORK/logs"
 cd "$COURSE_ROOT/tutorials/03-cpu-inoisy"
-sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
-  slurm/inoisy_one_rank.sbatch
-sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
-  slurm/inoisy_four_ranks.sbatch
+JOB_ONE=$(sbatch --parsable --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/inoisy_one_rank.sbatch)
+JOB_FOUR=$(sbatch --parsable --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/inoisy_four_ranks.sbatch)
+echo "one-rank job:  $JOB_ONE"
+echo "four-rank job: $JOB_FOUR"
 ```
 
 `sbatch FILE` submits a batch script and returns immediately with a numeric job
 ID. It does not run the program in the login shell. `--export=ALL` passes the
 current environment variables to the job, and the comma-separated assignment
-explicitly passes `COURSE_IMAGE`. The trailing backslash only wraps this long
-command for readability. Save the two job IDs printed by `sbatch`; replace
-`JOB_ID` below with a real number, without typing the underscore placeholder.
+explicitly passes `COURSE_IMAGE`. `--parsable` makes `sbatch` print just the
+numeric ID, so `JOB_ONE=$(...)` and `JOB_FOUR=$(...)` capture the two IDs into
+shell variables you reuse below — no hand-copying of numbers. The trailing
+backslash only wraps each long command for readability.
 
-Record both job IDs.
+These variables live only in this shell session. If you open a new terminal or
+your session drops, list your jobs with `squeue -u "$USER"` and set them again,
+e.g. `JOB_ONE=709747`.
 
 ## 28-35 min — Monitor and diagnose
 
 ```bash
 squeue -u "$USER"
-squeue -j JOB_ID -o "%.18i %.9T %.10M %.6D %.30R"
-scontrol show job JOB_ID
+squeue -j "$JOB_ONE,$JOB_FOUR" -o "%.18i %.9T %.10M %.6D %.30R"
+scontrol show job "$JOB_ONE"
 ```
 
 - `squeue -u "$USER"` lists all of your queued and running jobs.
-- `squeue -j JOB_ID` selects one job.
+- `squeue -j "$JOB_ONE,$JOB_FOUR"` selects just these two jobs (a
+  comma-separated list of IDs).
 - `-o` supplies a custom output format. The apparently cryptic string is a
   compact set of column specifications:
 
@@ -218,8 +224,9 @@ scontrol show job JOB_ID
 
   The leading dot requests right alignment; the number is the column width.
   This formatting changes only what `squeue` displays, not the job.
-- `scontrol show job JOB_ID` prints the scheduler's detailed record, including
-  requested resources and a pending reason when the job has not started.
+- `scontrol show job "$JOB_ONE"` prints the scheduler's detailed record for one
+  job, including requested resources and a pending reason when it has not
+  started.
 
 Common states are `PENDING` (waiting), `RUNNING`, `COMPLETED`, `FAILED`, and
 `CANCELLED`. A pending job is not necessarily broken; the `%R` column explains
@@ -228,9 +235,9 @@ what it is waiting for.
 After completion:
 
 ```bash
-sacct -j JOB_ID --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode
-less "$COURSE_WORK/logs/inoisy-one-JOB_ID.out"
-less "$COURSE_WORK/logs/inoisy-four-JOB_ID.out"
+sacct -j "$JOB_ONE,$JOB_FOUR" --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode
+less "$COURSE_WORK/logs/inoisy-one-$JOB_ONE.out"
+less "$COURSE_WORK/logs/inoisy-four-$JOB_FOUR.out"
 ```
 
 `sacct` reads accounting information for current or completed jobs. Its

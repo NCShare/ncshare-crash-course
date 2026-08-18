@@ -230,23 +230,28 @@ that GPU offload was not used.
 
 ```bash
 cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
-sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
-  slurm/quantui_gpu.sbatch
+JOB_ID=$(sbatch --parsable --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/quantui_gpu.sbatch)
+echo "Submitted job: $JOB_ID"
 ```
 
-`sbatch` submits the file to Slurm and prints a job ID. `--export` passes the
-current variables and explicitly supplies the image path. The shell script
-will run later on the assigned GPU node; closing the terminal after submission
-does not cancel the batch job.
+`sbatch` submits the file to Slurm and returns a job ID. `--export` passes the
+current variables and explicitly supplies the image path. `--parsable` makes
+`sbatch` print just the numeric ID (instead of `Submitted batch job 12345`), so
+`JOB_ID=$(...)` captures it into a shell variable you reuse in the commands
+below. The shell script will run later on the assigned GPU node; closing the
+terminal after submission does not cancel the batch job.
 
-Record the job ID.
+`JOB_ID` lives only in this shell session. If you open a new terminal or your
+session drops, re-find it with `squeue -u "$USER"` and set it again, e.g.
+`JOB_ID=709747`.
 
 ## 33-40 min — Monitor and verify (login node)
 
 ```bash
-squeue -j JOB_ID -o "%.18i %.9T %.10M %.6D %.30R"
-sacct -j JOB_ID --format=JobID,State,Elapsed,AllocCPUS,ReqMem,ExitCode
-less "$COURSE_WORK/logs/quantui-gpu-JOB_ID.out"
+squeue -j "$JOB_ID" -o "%.18i %.9T %.10M %.6D %.30R"
+sacct -j "$JOB_ID" --format=JobID,State,Elapsed,AllocCPUS,ReqMem,ExitCode
+less "$COURSE_WORK/logs/quantui-gpu-$JOB_ID.out"
 
 apptainer exec \
   --bind "$COURSE_WORK:$COURSE_WORK" \
@@ -255,9 +260,9 @@ apptainer exec \
   "$COURSE_WORK/quantui/quantui_gpu_result.json"
 ```
 
-Replace `JOB_ID` with the number returned by `sbatch`. The `squeue` format is
-the same one decoded in the CPU tutorial: job ID, state, elapsed time, node
-count, and assigned node or pending reason. `sacct` reports the final state,
+These reuse the `$JOB_ID` you captured at submit, so nothing needs to be typed
+in by hand. The `squeue` format is the same one decoded in the CPU tutorial:
+job ID, state, elapsed time, node count, and assigned node or pending reason. `sacct` reports the final state,
 resources, and exit code. `python -m json.tool FILE` parses and pretty-prints
 the result, which also verifies that it is valid JSON.
 
