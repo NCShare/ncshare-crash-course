@@ -65,8 +65,10 @@ build.
 
 ## How the blueprint was created
 
-Open [`ncshare-science-course.def`](ncshare-science-course.def) and map each
-section to a requirement:
+Open [`ncshare-science-course.def`](ncshare-science-course.def) — a link to
+read here, wherever you are reading this tutorial (e.g. on GitHub), or in
+your cloned repository; it is not a shell command. Map each section to a
+requirement:
 
 1. **Base image:** NCShare documents CUDA 12.8 for its H200 environment, so the
    recipe begins with its example CUDA 12.8.1/Ubuntu 24.04 base. CPU jobs use

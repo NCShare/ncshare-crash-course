@@ -218,8 +218,10 @@ image serve both workflows without reserving a GPU for CPU-only work.
 
 ## 22-28 min — Read the batch job (login node)
 
-Open [`quantui_gpu.sbatch`](slurm/quantui_gpu.sbatch). Connect each layer to
-its responsibility:
+Open [`quantui_gpu.sbatch`](slurm/quantui_gpu.sbatch) — a link to read here,
+wherever you are reading this tutorial (e.g. on GitHub), or in your cluster
+clone at `$COURSE_ROOT/tutorials/04-gpu-quantui/slurm/quantui_gpu.sbatch`; it
+is not a shell command. Connect each layer to its responsibility:
 
 | Layer | Evidence in the job |
 |---|---|
