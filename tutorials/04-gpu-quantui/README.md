@@ -496,7 +496,16 @@ With a partner, answer:
 For longer jobs on a preemptible GPU partition, checkpoint application state.
 Do not run CPU-only installation, visualization, or data preparation on a GPU.
 
-## Diagnose before rebuilding
+---
+
+## Reference material
+
+The guided 60-minute walkthrough ends here. Everything below is reference
+material — troubleshooting, an optional follow-on exercise, and the full
+provenance of the crossover numbers used above — not something to work
+through top to bottom.
+
+### Diagnose before rebuilding
 
 | Symptom | Check | Likely action |
 |---|---|---|
@@ -507,12 +516,12 @@ Do not run CPU-only installation, visualization, or data preparation on a GPU.
 | job pending | `squeue ... %R` | read scheduler reason |
 | CPU-only work on GPU | command and utilization | move it to a CPU allocation |
 
-## Bonus
+### Bonus
 
 See [the module-based cluster workflow](../../bonus/module-based-cluster/README.md)
 for a per-user conda environment and direct host GPU runtime.
 
-## Appendix: two changes to the crossover measurement, and what each one did
+### Appendix: two changes to the crossover measurement, and what each one did
 
 The table in "Find the crossover" above did not arrive at its final form in
 one step. Two independent things changed on the way there — which physical
@@ -522,7 +531,7 @@ all three measurements side by side, instead of quietly discarding the
 earlier ones, is itself a short lesson in what "the GPU is N times faster"
 actually depends on.
 
-### Measurement 1 — an earlier run, on different hardware
+#### Measurement 1 — an earlier run, on different hardware
 
 Measured 2026-08-05, **1 GPU against 6 affinity-confirmed CPU cores**, before
 NCShare had finalized which node the workshop's `workshop` partition would
@@ -535,7 +544,7 @@ use:
 | C6H6 / cc-pVDZ | 2.86 s | 2.74 s | **0.96x — the crossover** |
 | C6H6 / cc-pVTZ | 7.07 s | 42.41 s | **6.00x** |
 
-### Measurement 2 — the workshop's own node, still at 6 cores
+#### Measurement 2 — the workshop's own node, still at 6 cores
 
 Measured 2026-08-18, **1 GPU against 6 affinity-confirmed CPU cores** — the
 same allocation shape as measurement 1, but on the node the workshop
@@ -551,7 +560,7 @@ actually uses:
 This is a genuinely different physical GPU from the one behind measurement 1
 — not the same hardware measured twice.
 
-### Why the GPU column moved between 1 and 2, and the CPU column mostly didn't
+#### Why the GPU column moved between 1 and 2, and the CPU column mostly didn't
 
 | System | Measurement 1 GPU | Measurement 2 GPU | Difference |
 |---|---:|---:|---:|
@@ -571,7 +580,7 @@ by contrast, barely moved at its largest value — 42.41 s then, 42.14 s now —
 because Slurm's CPU allocation is more strictly isolated by the scheduler
 than a GPU's shared memory and interconnect paths are.
 
-### Measurement 3 — the same node, at the proportional 12-core share (the main text)
+#### Measurement 3 — the same node, at the proportional 12-core share (the main text)
 
 Measured the same day as measurement 2, same node, **1 GPU against 12
 affinity-confirmed CPU cores** — the proportional share NCShare confirms for
@@ -585,7 +594,7 @@ text, repeated here for direct comparison:
 | C6H6 / cc-pVDZ | 7.87 s | 2.96 s | 0.38x |
 | C6H6 / cc-pVTZ | 11.84 s | 24.46 s | **2.07x** |
 
-### Why doubling the cores mattered for one preset and not the others
+#### Why doubling the cores mattered for one preset and not the others
 
 Doubling the CPU allocation from measurement 2 to measurement 3 barely
 touches the small presets — H2O's CPU leg drops from 0.62 s to 0.37 s, not
@@ -598,7 +607,7 @@ crossover point itself stays inside the same cc-pVDZ–cc-pVTZ bracket in both
 cases — cc-pVDZ still favors the CPU either way — but the *size* of the
 GPU's eventual win depends heavily on what it is being compared against.
 
-### The lesson, not just the numbers
+#### The lesson, not just the numbers
 
 None of this changes the mechanism the exercise teaches: small systems lose
 to fixed launch/transfer overhead, large systems eventually win on raw
