@@ -50,7 +50,7 @@ Make a file to practice with,
 ```bash
 cd /work/$USER/course
 echo "hello NCShare" > note.txt
-ls -lh
+ls -l
 ```
 
 Copy it, rename it, and move it into a folder,
