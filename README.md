@@ -1,4 +1,4 @@
-The finalized version will be posted in:
+**Note 08/18**: The finalized version will be posted in:
 
 https://github.com/NCShare/ncshare-crash-course
 
