@@ -22,6 +22,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import getpass
 import json
 import os
 import subprocess
@@ -240,11 +241,15 @@ def main() -> None:
         "cpu_affinity": affinity,
         "slurm_job_id": os.environ.get("SLURM_JOB_ID"),
     }
-    course_work = Path(
-        os.environ.get(
-            "COURSE_WORK", f"/work/{os.environ['USER']}/ncshare-crash-course"
-        )
-    )
+    course_work_dir = os.environ.get("COURSE_WORK")
+    if not course_work_dir:
+        # COURSE_WORK is normally passed into the container by the Slurm job.
+        # If it is absent, fall back to the default work path. Resolve the user
+        # with getpass.getuser(), which reads the passwd database and therefore
+        # still works under `apptainer --cleanenv`, where $USER is stripped from
+        # the environment (os.environ['USER'] would raise KeyError there).
+        course_work_dir = f"/work/{getpass.getuser()}/ncshare-crash-course"
+    course_work = Path(course_work_dir)
     output = course_work / "quantui" / f"cpu_gpu_comparison_{args.preset}.json"
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
