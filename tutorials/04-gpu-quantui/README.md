@@ -384,11 +384,12 @@ from. The crossover falls somewhere **between cc-pVDZ and cc-pVTZ**: the CPU
 still wins at cc-pVDZ, and the GPU has already won by cc-pVTZ, rather than
 either preset landing near parity.
 
-> **Note:** This is already the proportional comparison — 12 cores per GPU is
-> what NCShare's workshop node actually allocates, not a number chosen to
-> flatter either device. A less generous CPU allocation looks meaningfully
-> different: at 6 cores instead of 12, this same hardware showed cc-pVTZ at
-> 3.42x rather than 2.07x (see the appendix). Always quote the denominator.
+> **Note:** We chose 12 cores to make a proportional comparison: 12 cores per
+> GPU is what NCShare's workshop node actually allocates. Thus, we want to
+> use this ratio when comparing performance. A less generous CPU allocation
+> may (and does - check out the Appendix below for extra testing we did) look
+> meaningfully different. A key takeaway is that, when comparing hardware
+> speeds, always quote the hardware numbers your comparison is based upon.
 
 The script runs each leg in a separate process. That is a requirement, not a
 style choice: QuantUI caches its GPU probe on first use, so the CPU leg has
