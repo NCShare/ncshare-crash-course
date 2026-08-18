@@ -496,19 +496,6 @@ With a partner, answer:
 For longer jobs on a preemptible GPU partition, checkpoint application state.
 Do not run CPU-only installation, visualization, or data preparation on a GPU.
 
-## Optional: use the image in Open OnDemand
-
-NCShare's JupyterLab Apptainer launcher accepts a custom SIF. Select the course
-image, request one H200 only when GPU computation is needed, launch JupyterLab,
-and open QuantUI's notebook:
-
-```text
-/opt/QuantUI/notebooks/molecule_computations.ipynb
-```
-
-For the scientific-visualization session, select the same image on a CPU
-partition and open the course notebook from the bound course repository.
-
 ## Diagnose before rebuilding
 
 | Symptom | Check | Likely action |
