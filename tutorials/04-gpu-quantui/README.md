@@ -148,7 +148,9 @@ Discuss why it:
 
 ## 8-15 min — Separate allocation from exposure (login node)
 
-Two different mechanisms are required:
+Two different mechanisms are required. The block below is a schematic of both —
+read it, do not run it. `IMAGE.sif` and `COMMAND` are placeholders, and neither
+line is something you type at the shell:
 
 ```bash
 # Slurm: reserve one physical H200
@@ -164,8 +166,10 @@ the calculation result's `gpu_used` field proves this supported calculation
 actually followed QuantUI's offload path.
 
 `#SBATCH` lines are directives inside a batch file; they are not typed directly
-at the shell. `--gres` means generic resource and requests one H200. If the job
-does not receive a GPU, `--nv` cannot create one.
+at the shell. You do not run the `apptainer exec --nv` line by hand either — the
+verification script in the next section and the batch job both issue it for you
+with the real image path. `--gres` means generic resource and requests one H200.
+If the job does not receive a GPU, `--nv` cannot create one.
 
 ## 15-22 min — Verify interactively (compute node)
 
