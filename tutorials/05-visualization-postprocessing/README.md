@@ -98,7 +98,9 @@ NCShare Open OnDemand can launch JupyterLab from a selected Apptainer image:
 
 1. Open **Interactive Apps → Jupyter Lab Apptainer**.
 2. Request 2 CPU threads, 8 GB RAM, and one hour.
-3. Select the course SIF under **Apptainer Container File**.
+3. Select the course SIF under **Apptainer Container File** —
+   `/opt/apps/containers/users/ncshare-science-course.sif` (the default
+   `$COURSE_IMAGE` used throughout this course).
 4. Do **not** request a GPU; these plots and the post-processor are CPU work.
 5. Launch, open the course repository, and select the image's Python 3 kernel.
 6. Open:
@@ -175,17 +177,12 @@ Two figures:
    It makes the paired calculation and `CPU time / GPU time` comparison explicit
    without implying that the unordered calculation categories form a trend.
 2. **Geometry-relaxation trajectory** — energy above the final recorded value
-   at each ordered optimization step. Generate the data from the CPU-only Open
-   OnDemand allocation already running this notebook:
-
-   ```bash
-   apptainer exec --cleanenv \
-     --bind "$COURSE_WORK:$COURSE_WORK" \
-     --env "COURSE_WORK=$COURSE_WORK" \
-     "$COURSE_IMAGE" \
-     python "$COURSE_ROOT/tutorials/04-gpu-quantui/run_geometry_optimization.py" \
-     --preset water
-   ```
+   at each ordered optimization step. This is optional and CPU-only. Generate
+   it with its own short `srun` allocation — **not** from a terminal inside
+   this Open OnDemand session, which cannot nest another Apptainer call. See
+   "Carry the numbers into the visualization session" in the
+   [GPU tutorial](../04-gpu-quantui/README.md) for the exact commands; it is
+   fine to run this before or after opening the notebook here.
 
 If a job is still queued, the unified notebook falls back by data type to
 bundled samples under

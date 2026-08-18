@@ -322,7 +322,7 @@ released:
 srun -p workshop \
   --gres=gpu:h200:1 \
   --time=00:10:00 \
-  --cpus-per-task=6 \
+  --cpus-per-task=12 \
   --mem=16G \
   --pty bash -l
 ```
@@ -359,27 +359,36 @@ exit
 
 ### What this looked like on NCShare
 
-Measured 2026-08-05 on an NCShare H200 node (driver 580.126.20), **1 GPU
-against 6 affinity-confirmed CPU cores**:
+Measured 2026-08-18 on the workshop partition's own H200 node, **1 GPU
+against 12 affinity-confirmed CPU cores** — the proportional share NCShare
+confirms for this node (96 cores across 8 GPUs, so 12 cores per GPU, not an
+estimate). Two earlier measurements — one on a less generous CPU allocation,
+one on different hardware entirely — are kept in the appendix at the end of
+this file, together with a full walk-through of what each change did to the
+numbers:
 
 | System | GPU | CPU | CPU time / GPU time |
 |---|---:|---:|---|
-| H2O / STO-3G | 1.80 s | 0.35 s | 0.20x |
-| C6H6 / 6-31G | 2.69 s | 0.77 s | 0.29x |
-| C6H6 / cc-pVDZ | 2.86 s | 2.74 s | **0.96x — the crossover** |
-| C6H6 / cc-pVTZ | 7.07 s | 42.41 s | **6.00x** |
+| H2O / STO-3G | 6.89 s | 0.37 s | 0.05x |
+| C6H6 / 6-31G | 7.65 s | 0.85 s | 0.11x |
+| C6H6 / cc-pVDZ | 7.87 s | 2.96 s | 0.38x |
+| C6H6 / cc-pVTZ | 11.84 s | 24.46 s | **2.07x — GPU wins** |
 
-Look at the GPU column first. Across the first three presets it barely moves —
-1.80 s to 2.86 s — while the system grows substantially. That flat portion
-*is* the fixed overhead, visible rather than asserted. The CPU column meanwhile
-climbs steadily, and at cc-pVTZ it explodes to 42 s while the GPU reaches only
-7 s.
+The CPU column responds unevenly to the allocation: the small presets are
+dominated by fixed overhead (container start, import, a handful of SCF
+iterations) rather than parallelizable work, so more cores barely help, while
+cc-pVTZ's cost is genuinely parallel and drops accordingly. The GPU column
+stays in a fairly narrow band — 6.89 s to 11.84 s — without a clean monotonic
+climb; that noise is real, and the appendix says more about where it comes
+from. The crossover falls somewhere **between cc-pVDZ and cc-pVTZ**: the CPU
+still wins at cc-pVDZ, and the GPU has already won by cc-pVTZ, rather than
+either preset landing near parity.
 
-> **Warning:** A speedup means nothing without the CPU allocation it was
-> measured against. These numbers are 1 GPU vs 6 cores. The node has ~12
-> physical cores per GPU, so a proportional-share comparison would show a
-> smaller factor and move the crossover to a larger basis. Always quote the
-> denominator.
+> **Note:** This is already the proportional comparison — 12 cores per GPU is
+> what NCShare's workshop node actually allocates, not a number chosen to
+> flatter either device. A less generous CPU allocation looks meaningfully
+> different: at 6 cores instead of 12, this same hardware showed cc-pVTZ at
+> 3.42x rather than 2.07x (see the appendix). Always quote the denominator.
 
 The script runs each leg in a separate process. That is a requirement, not a
 style choice: QuantUI caches its GPU probe on first use, so the CPU leg has
@@ -409,12 +418,12 @@ work, and what would you have to measure to know?
 The script prints your CPU **affinity mask** alongside the core count, and
 warns if they disagree. That is not decoration. When these numbers were
 measured, `os.cpu_count()` reported **192** — every core on the node — while
-Slurm had granted **6**.
+Slurm had granted **12**.
 
 That was safe only because Slurm used a *cpuset*, so the affinity mask also
-showed 6 and threading libraries saw the real allocation. Under a cgroup CPU
+showed 12 and threading libraries saw the real allocation. Under a cgroup CPU
 *quota* instead, the mask would have reported 192, OpenMP would have spawned
-192 threads onto 6 cores' worth of time, and every CPU timing would have been
+192 threads onto 12 cores' worth of time, and every CPU timing would have been
 inflated — making the GPU look better than it is.
 
 Same request, same `cpu_count()`, opposite consequences. Whenever you
@@ -429,12 +438,33 @@ primary notebook uses a connected-dot plot on a logarithmic time axis; the
 preserved focused QuantUI notebook offers a grouped-bar alternative. Both read
 the JSON directly, so there is no need to copy numbers by hand.
 
-If you would also like a **geometry-relaxation trajectory** to plot (energy at
-each optimization step), generate it from the CPU allocation used for the
-visualization session—not from the login node and not while holding a GPU:
+**Optional — a geometry-relaxation trajectory to plot.** This adds
+energy-at-each-optimization-step data to the visualization session. Skip it
+if you are short on time: without it, the notebook falls back to a clearly
+marked synthetic trajectory and the rest of the course is unaffected.
+
+This is CPU-only work — QuantUI's optimizer runs on the host, not the GPU —
+so it needs its **own** short CPU allocation, separate from anything else.
+Do **not** run it on the login node. Do **not** try to run it from a terminal
+inside the visualization session's Open OnDemand JupyterLab either: that
+session is itself launched through Apptainer, and a terminal inside it does
+not have the `apptainer` command available to nest another container call.
+Request a plain CPU shell instead:
 
 ```bash
-# CPU work — QuantUI's optimizer runs on the host, so do NOT request a GPU.
+srun -p workshop --cpus-per-task=2 --mem=4G --time=00:10:00 --pty bash -l
+```
+
+A good time to do this is around when you launch
+[Session 4](../05-visualization-postprocessing/README.md)'s Open OnDemand
+job, so the two queue waits overlap instead of stacking.
+
+With the prompt now on a compute node, run the calculation:
+
+```bash
+export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
+export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 apptainer exec --cleanenv \
   --bind "$COURSE_WORK:$COURSE_WORK" \
   --env "COURSE_WORK=$COURSE_WORK" \
@@ -443,9 +473,11 @@ apptainer exec --cleanenv \
   --preset water
 ```
 
-Because it needs no GPU, the recommended time to run it is after launching the
-visualization session's CPU-only Open OnDemand job. If no real trajectory is
-available, the notebook uses a clearly marked synthetic fallback.
+Review the output, then release the allocation:
+
+```bash
+exit
+```
 
 ## 52-60 min — Explain and improve the design (login node)
 
@@ -491,6 +523,107 @@ partition and open the course notebook from the bound course repository.
 
 See [the module-based cluster workflow](../../bonus/module-based-cluster/README.md)
 for a per-user conda environment and direct host GPU runtime.
+
+## Appendix: two changes to the crossover measurement, and what each one did
+
+The table in "Find the crossover" above did not arrive at its final form in
+one step. Two independent things changed on the way there — which physical
+node the job ran on, and how many CPU cores it was compared against — and
+each moved the numbers for a different, identifiable reason. Walking through
+all three measurements side by side, instead of quietly discarding the
+earlier ones, is itself a short lesson in what "the GPU is N times faster"
+actually depends on.
+
+### Measurement 1 — an earlier run, on different hardware
+
+Measured 2026-08-05, **1 GPU against 6 affinity-confirmed CPU cores**, before
+NCShare had finalized which node the workshop's `workshop` partition would
+use:
+
+| System | GPU | CPU | CPU time / GPU time |
+|---|---:|---:|---|
+| H2O / STO-3G | 1.80 s | 0.35 s | 0.20x |
+| C6H6 / 6-31G | 2.69 s | 0.77 s | 0.29x |
+| C6H6 / cc-pVDZ | 2.86 s | 2.74 s | **0.96x — the crossover** |
+| C6H6 / cc-pVTZ | 7.07 s | 42.41 s | **6.00x** |
+
+### Measurement 2 — the workshop's own node, still at 6 cores
+
+Measured 2026-08-18, **1 GPU against 6 affinity-confirmed CPU cores** — the
+same allocation shape as measurement 1, but on the node the workshop
+actually uses:
+
+| System | GPU | CPU | CPU time / GPU time |
+|---|---:|---:|---|
+| H2O / STO-3G | 6.95 s | 0.62 s | 0.09x |
+| C6H6 / 6-31G | 10.30 s | 0.92 s | 0.09x |
+| C6H6 / cc-pVDZ | 8.10 s | 3.28 s | 0.40x |
+| C6H6 / cc-pVTZ | 12.33 s | 42.14 s | **3.42x** |
+
+This is a genuinely different physical GPU from the one behind measurement 1
+— not the same hardware measured twice.
+
+### Why the GPU column moved between 1 and 2, and the CPU column mostly didn't
+
+| System | Measurement 1 GPU | Measurement 2 GPU | Difference |
+|---|---:|---:|---:|
+| H2O / STO-3G | 1.80 s | 6.95 s | +5.15 s |
+| C6H6 / 6-31G | 2.69 s | 10.30 s | +7.61 s |
+| C6H6 / cc-pVDZ | 2.86 s | 8.10 s | +5.24 s |
+| C6H6 / cc-pVTZ | 7.07 s | 12.33 s | +5.26 s |
+
+Three of the four differences cluster tightly around **+5.2 s** — roughly
+constant, not proportional to the size of the calculation. A proportional
+slowdown would mean the GPU itself computed more slowly; a constant one
+points instead at something added *around* the calculation on both runs
+alike — most plausibly contention on a shared GPU node: PCIe/NVLink
+bandwidth, host-memory bandwidth, or CUDA context/kernel-launch scheduling
+delay from other jobs sharing the same GPUs at the same time. The CPU column,
+by contrast, barely moved at its largest value — 42.41 s then, 42.14 s now —
+because Slurm's CPU allocation is more strictly isolated by the scheduler
+than a GPU's shared memory and interconnect paths are.
+
+### Measurement 3 — the same node, at the proportional 12-core share (the main text)
+
+Measured the same day as measurement 2, same node, **1 GPU against 12
+affinity-confirmed CPU cores** — the proportional share NCShare confirms for
+this node (96 cores across 8 GPUs). This is the table shown in the main
+text, repeated here for direct comparison:
+
+| System | GPU | CPU | CPU time / GPU time |
+|---|---:|---:|---|
+| H2O / STO-3G | 6.89 s | 0.37 s | 0.05x |
+| C6H6 / 6-31G | 7.65 s | 0.85 s | 0.11x |
+| C6H6 / cc-pVDZ | 7.87 s | 2.96 s | 0.38x |
+| C6H6 / cc-pVTZ | 11.84 s | 24.46 s | **2.07x** |
+
+### Why doubling the cores mattered for one preset and not the others
+
+Doubling the CPU allocation from measurement 2 to measurement 3 barely
+touches the small presets — H2O's CPU leg drops from 0.62 s to 0.37 s, not
+half — because those runs are dominated by fixed overhead (container start,
+import, a handful of SCF iterations), not by parallelizable work extra cores
+can speed up. cc-pVTZ tells a different story: its CPU leg drops from 42.14 s
+to 24.46 s, a real ~1.7x speedup from twice the cores, and the GPU's margin
+at that preset shrinks from **3.42x to 2.07x** as a direct result. The
+crossover point itself stays inside the same cc-pVDZ–cc-pVTZ bracket in both
+cases — cc-pVDZ still favors the CPU either way — but the *size* of the
+GPU's eventual win depends heavily on what it is being compared against.
+
+### The lesson, not just the numbers
+
+None of this changes the mechanism the exercise teaches: small systems lose
+to fixed launch/transfer overhead, large systems eventually win on raw
+arithmetic. What changed, twice, was the *size* of the numbers around that
+mechanism — once because of which physical hardware and how much contention
+it carried, once because of how generous a CPU allocation the GPU was being
+compared against. Neither is a flaw in the measurement; both are real
+properties of shared clusters and honest benchmarking worth teaching
+directly. A speed number without its measurement conditions — which node,
+how much contention, which CPU allocation — is not reproducible. These three
+tables, side by side, are a concrete demonstration of exactly that point, and
+a fair prompt for discussion: what would you need to report alongside a
+timing number for someone else to trust it?
 
 ## Sources
 
