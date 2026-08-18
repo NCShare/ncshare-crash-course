@@ -118,11 +118,7 @@ cd ncshare-crash-course
 These commands run on the NCShare login node. `cd` changes directory and `git clone` downloads a working copy of the course files.
 If the repository has already been cloned, use `git pull` to get the latest updates.
 
-This puts the repository at `$HOME/ncshare-crash-course`, which is what the
-tutorials assume as `COURSE_ROOT`. Keep it in `$HOME`: the tutorials use a
-separate `/work/$USER/ncshare-crash-course` area (`COURSE_WORK`) for logs and
-outputs, so cloning into `/work` would collide the source tree with the
-scratch directory.
+This puts the repository at `$HOME/ncshare-crash-course`, which is what the tutorials assume as `COURSE_ROOT`. Keep it in `$HOME`: the tutorials use a separate `/work/$USER/ncshare-crash-course` area (`COURSE_WORK`) for logs and outputs, so cloning into `/work` would collide the source tree with the scratch directory.
 
 ### Additional tasks
 

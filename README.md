@@ -48,12 +48,17 @@ The examples use the following locations,
 - `/opt/apps/containers/users` for an HPC-team-staged, shared course SIF.
 - Job-local `/scratch` only for temporary, high-I/O data that is copied out before a job ends.
 
-Override the defaults when needed,
+**You normally set nothing here.** Each tutorial opens with a setup block that defines these variables itself, e.g. `export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"`. That single line carries *both* halves: the `${COURSE_ROOT:-DEFAULT}` form means *"use `COURSE_ROOT` if it is already set in this shell, otherwise use the literal `DEFAULT` written right here in the line."* So the default is not something that pre-exists in your environment — it is the fallback baked into each tutorial's setup block. Run that block and the variable is defined for the rest of that shell; start a fresh shell (a new login, or a new `srun` allocation) and it is unset again until the next tutorial's setup block re-defines it. Repeating the block in every tutorial is deliberate: it lets you begin any tutorial in a clean shell without having run the earlier ones.
+
+To point one somewhere else, export it **once at the start of your session, before running a tutorial** — a plain assignment with no `:-` fallback, so your value is already set and therefore wins over every tutorial's default:
+
 ```bash
 export COURSE_ROOT="$HOME/ncshare-crash-course"
 export COURSE_WORK="/work/$USER/ncshare-crash-course"
 export COURSE_IMAGE="/opt/apps/containers/users/ncshare-science-course.sif"
 ```
+
+The right-hand sides above are the defaults themselves, shown as a copy-paste template — change a path to override that one variable; delete the lines you don't want to change.
 
 ## External software
 
