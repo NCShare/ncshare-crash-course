@@ -109,17 +109,20 @@ than retrying blindly. The most common causes are:
 
 ### Clone workshop repository
 
-The instructor will replace the `<COURSE_REPOSITORY_URL>` placeholder below before publishing:
-
 ```bash
-cd /work/$USER 
-git clone <COURSE_REPOSITORY_URL> ncshare-crash-course
-cd ncshare-crash-course 
+cd "$HOME"
+git clone https://github.com/NCShare/ncshare-crash-course.git
+cd ncshare-crash-course
 ```
 
-These commands run on the NCShare login node. `cd` changes directory and `git clone` downloads a working copy of the course files. Replace the
-placeholder URL with the address published by the instructor; do not type the angle brackets literally.
-If the repository has already been cloned, use `git pull` to get the latest updates. 
+These commands run on the NCShare login node. `cd` changes directory and `git clone` downloads a working copy of the course files.
+If the repository has already been cloned, use `git pull` to get the latest updates.
+
+This puts the repository at `$HOME/ncshare-crash-course`, which is what the
+tutorials assume as `COURSE_ROOT`. Keep it in `$HOME`: the tutorials use a
+separate `/work/$USER/ncshare-crash-course` area (`COURSE_WORK`) for logs and
+outputs, so cloning into `/work` would collide the source tree with the
+scratch directory.
 
 ### Additional tasks
 
