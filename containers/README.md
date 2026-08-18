@@ -199,7 +199,6 @@ NCShare supports two routes.
 export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 srun -p workshop --time=01:00:00 --cpus-per-task=8 --mem=24G --pty bash -l
 bash "$COURSE_ROOT/containers/build_container.sh"
-exit
 ```
 
 The `srun` options request a one-hour interactive CPU allocation with eight
@@ -210,6 +209,15 @@ image so the build record can be checked.
 The script places cache, temporary build data, the image, and its checksum
 under `/work/$USER` by default. A first build can take tens of minutes, so the
 course uses the prebuilt result while the demonstration build continues.
+
+The build can run for a while and prints its record as it goes, so `exit` is
+left off the block above — pasting all four lines together would end the
+allocation the instant the build finishes, before anyone can read that output.
+Review it, then release the allocation on its own:
+
+```bash
+exit
+```
 
 ### Route B: use the NCShare GitLab runner
 

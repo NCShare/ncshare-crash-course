@@ -197,6 +197,14 @@ export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
 export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 bash "$COURSE_ROOT/containers/verify_container.sh" \
   "$COURSE_IMAGE" gpu
+```
+
+Read the output — it is intentionally left off the block above so pasting it
+does not immediately end the allocation before you have seen it. Once you are
+done, run `exit` on its own to release the allocation and return to the login
+node:
+
+```bash
 exit
 ```
 
@@ -333,8 +341,15 @@ for p in small medium crossover large; do
     "$COURSE_IMAGE" \
     python run_cpu_gpu_comparison.py --preset "$p"
 done
+```
 
-exit  # release the GPU when the sweep finishes
+Both legs of each preset print a wall time and energy to the terminal as the
+loop runs — that live output is what you copy into the table below, so `exit`
+is deliberately left off this block. Fill in your numbers first, then release
+the GPU:
+
+```bash
+exit
 ```
 
 ### What this looked like on NCShare
