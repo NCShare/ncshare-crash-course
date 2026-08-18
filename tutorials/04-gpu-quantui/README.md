@@ -58,6 +58,19 @@ NVIDIA driver. Apptainer's `--nv` option exposes that driver and the allocated
 device inside the container. CUDA-aware Python packages inside the SIF can then
 use the device. A check at each layer makes failures easier to locate.
 
+## Where each step runs: login node vs compute node
+
+After `ssh`, you land on a **login node**. It is for navigation, editing, and
+submitting jobs, not for computation. Anything that runs the container's Python
+(importing QuantUI, `quantui gpu check`, a calculation, or a Jupyter kernel)
+must run on a **compute node**, reached through an interactive `srun` shell, a
+batch `sbatch` job, or an Open OnDemand session. The container's scientific
+stack is built for compute-node CPUs and will not import on the login node.
+
+Every step below is tagged **(login node)** or **(compute node)** so it is clear
+where to run it. When in doubt: reading, editing, and submitting happen on the
+login node; anything that imports the scientific stack happens on a compute node.
+
 ## Before the clock starts
 
 - Complete [pre-workshop setup](../00-prework.md).
@@ -75,7 +88,18 @@ mkdir -p "$COURSE_WORK"/{logs,quantui}
 As in the CPU lab, these variables name the repository, mutable workspace, and
 read-only image. The braces create separate `logs` and `quantui` directories.
 
-## 0-8 min — Inspect the Python environment
+## 0-8 min — Inspect the Python environment (compute node)
+
+The container's Python only runs on a compute node, so grab a short CPU shell
+first. Reading the environment needs no GPU, so this deliberately does **not**
+request one:
+
+```bash
+srun -p workshop --cpus-per-task=2 --mem=4G --time=00:15:00 --pty bash -l
+export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
+```
+
+With the prompt now on a compute node, inspect the image:
 
 ```bash
 apptainer exec "$COURSE_IMAGE" python --version
@@ -109,6 +133,9 @@ The manifests describe the packages actually resolved during the build. The
 definition file describes what the builder requested. Retaining both helps
 explain why an image built months later might differ.
 
+Release the CPU shell now with `exit`; the rest of this step reads repository
+files and needs no allocation.
+
 Then locate the environment-creation block in
 [`ncshare-science-course.def`](../../containers/ncshare-science-course.def).
 Discuss why it:
@@ -119,7 +146,7 @@ Discuss why it:
   gpu4pyscf source packages; and
 - records both the requested recipe and resolved package manifests.
 
-## 8-15 min — Separate allocation from exposure
+## 8-15 min — Separate allocation from exposure (login node)
 
 Two different mechanisms are required:
 
@@ -140,7 +167,7 @@ actually followed QuantUI's offload path.
 at the shell. `--gres` means generic resource and requests one H200. If the job
 does not receive a GPU, `--nv` cannot create one.
 
-## 15-22 min — Verify interactively
+## 15-22 min — Verify interactively (compute node)
 
 Request one short GPU allocation:
 
@@ -177,7 +204,7 @@ environment. `exit` releases the interactive allocation.
 The CPU verification path does not use `--nv`; the GPU path does. This lets one
 image serve both workflows without reserving a GPU for CPU-only work.
 
-## 22-28 min — Read the batch job
+## 22-28 min — Read the batch job (login node)
 
 Open [`quantui_gpu.sbatch`](slurm/quantui_gpu.sbatch). Connect each layer to
 its responsibility:
@@ -199,7 +226,7 @@ it is useful here because people and programs can both inspect it. The script
 exits with an error if the calculation did not converge or if QuantUI reports
 that GPU offload was not used.
 
-## 28-33 min — Submit
+## 28-33 min — Submit (login node)
 
 ```bash
 cd "$COURSE_ROOT/tutorials/04-gpu-quantui"
@@ -214,7 +241,7 @@ does not cancel the batch job.
 
 Record the job ID.
 
-## 33-40 min — Monitor and verify
+## 33-40 min — Monitor and verify (login node)
 
 ```bash
 squeue -j JOB_ID -o "%.18i %.9T %.10M %.6D %.30R"
@@ -233,6 +260,11 @@ the same one decoded in the CPU tutorial: job ID, state, elapsed time, node
 count, and assigned node or pending reason. `sacct` reports the final state,
 resources, and exit code. `python -m json.tool FILE` parses and pretty-prints
 the result, which also verifies that it is valid JSON.
+
+The `squeue`, `sacct`, and `less` commands are ordinary login-node tools. The
+`json.tool` line runs container Python but imports only the standard library, so
+it is fine on the login node too, unlike the scientific-stack commands, which
+need a compute node.
 
 Expected fields include:
 
@@ -254,7 +286,7 @@ This tells you the calculation followed QuantUI's supported GPU-offload
 path. It does **not** tell you the GPU was faster—water/STO-3G is far too
 small for that. The next section measures that question directly.
 
-## 40-52 min — Find the crossover
+## 40-52 min — Find the crossover (compute node)
 
 A GPU is not simply "faster". Every offloaded calculation pays a fixed cost:
 launching kernels and moving data between host and device. For a small
@@ -386,7 +418,7 @@ Because it needs no GPU, the recommended time to run it is after launching the
 visualization session's CPU-only Open OnDemand job. If no real trajectory is
 available, the notebook uses a clearly marked synthetic fallback.
 
-## 52-60 min — Explain and improve the design
+## 52-60 min — Explain and improve the design (login node)
 
 With a partner, answer:
 
