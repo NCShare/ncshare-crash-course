@@ -37,9 +37,9 @@ data to figure explicit.
 ## 1. Use the course image—do not create another environment
 
 ```bash
-export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
+export COURSE_ROOT="$HOME/ncshare-crash-course"
+export COURSE_WORK="/work/$USER/ncshare-crash-course"
+export COURSE_IMAGE="/opt/apps/containers/users/ncshare-science-course.sif"
 
 apptainer exec "$COURSE_IMAGE" python -c \
   "import h5py, matplotlib, numpy; print('visualization stack OK')"
@@ -71,9 +71,16 @@ sbatch --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
 ```
 
 This submits a CPU batch job; post-processing does not need an H200. The job
-looks for the newest four-rank `.h5` result unless the caller supplies a
-`SOURCE_H5` variable. It stops with a clear error if no input exists rather
-than silently analyzing the fallback dataset.
+uses the newest four-rank `.h5` result from the CPU exercise. The relevant line
+in the batch file is:
+
+```bash
+SOURCE_H5=$(ls -t "$COURSE_WORK"/inoisy/four-ranks/*.h5 | head -n 1)
+```
+
+`ls -t` lists the files with the newest first, and `head -n 1` keeps that first
+filename. If the CPU exercise produced no HDF5 file, the post-processing job
+stops instead of substituting synthetic data.
 
 The job binds `/work/$USER` and calls the unmodified converter stored inside
 the SIF:
@@ -95,6 +102,9 @@ the data.
 ## 3. Open the notebook through Open OnDemand
 
 NCShare Open OnDemand can launch JupyterLab from a selected Apptainer image:
+
+> In **Apptainer Container File**, enter the full path
+> `/opt/apps/containers/users/ncshare-science-course.sif`.
 
 1. Open **Interactive Apps → Jupyter Lab Apptainer**.
 2. Request 2 CPU threads, 8 GB RAM, and one hour.
@@ -134,33 +144,17 @@ host directories are bound so Jupyter can read the notebook and data. The
 `--no-browser` option prevents a compute node from trying to open its own web
 browser; in normal class use, Open OnDemand handles the browser connection.
 
-For each input type, the notebook checks an explicit environment-variable
-override, then the expected location under `$COURSE_WORK`, and finally the
-appropriate bundled fallback:
+The notebook uses the data produced during the course:
 
-| Input | Override | Normal result pattern |
-|---|---|---|
-| Raw inoisy+ field | `INOISY_H5` | `inoisy/four-ranks/*.h5` |
-| Processed inoisy+ field | `INOISY_EMISSIVITY_H5` | `inoisy/postprocessed/*emissivity*.h5` |
-| QuantUI JSON directory | `QUANTUI_RESULTS` | `quantui/cpu_gpu_comparison_*.json` and `quantui/geometry_optimization_water.json` |
+| Input | Expected location |
+|---|---|
+| Raw inoisy+ field | `$COURSE_WORK/inoisy/four-ranks/*.h5` |
+| Processed inoisy+ field | `$COURSE_WORK/inoisy/postprocessed/inoisy_lowres_emissivity.h5` |
+| QuantUI JSON directory | `$COURSE_WORK/quantui/` |
 
-The two inoisy+ figures declare their raw or processed source independently;
-the notebook never claims independently selected files are the same run. The
-inoisy+ fallbacks are synthetic. Bundled QuantUI timings are real NCShare
-measurements, while the geometry trajectory is synthetic and visibly
-watermarked.
-
-Environment variables can select specific inputs before Jupyter starts:
-
-```bash
-export INOISY_H5="/work/$USER/ncshare-crash-course/inoisy/four-ranks/FILE.h5"
-export INOISY_EMISSIVITY_H5="/work/$USER/ncshare-crash-course/inoisy/postprocessed/FILE.h5"
-export QUANTUI_RESULTS="/work/$USER/ncshare-crash-course/quantui"
-```
-
-Replace each `FILE.h5` with an existing filename. Set only the overrides you
-need. The notebook reports every selected input; read that report before
-interpreting a plot.
+There is no synthetic inoisy+ fallback. If an inoisy file is missing, return to
+the CPU or post-processing exercise and create it. The notebook prints the files
+it opens so you can confirm the inputs before interpreting a plot.
 
 ## Plot the QuantUI results from the GPU session
 
@@ -211,15 +205,13 @@ apptainer inspect "$COURSE_IMAGE" \
 apptainer exec "$COURSE_IMAGE" \
   cat /opt/course-build/inoisy4d-commit.txt
 apptainer exec "$COURSE_IMAGE" \
-  cat /opt/course-build/quantui-version.txt
-cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
+cat /opt/course-build/quantui-version.txt
+sha256sum "$COURSE_IMAGE"
 ```
 
 The first command selects recipe labels. The next two commands record the exact
-inoisy4d revision and installed QuantUI release. The final command uses a
-published checksum file when available and computes the checksum directly
-otherwise. Record the resulting value; do not paste the fallback operator
-itself into a methods section.
+inoisy4d revision and installed QuantUI release. The final command computes the
+checksum of the SIF. Record the resulting value.
 
 Keep that identity with the input HDF5 path, time/slice selection, percentile
 limits, plotting code, and exported figure.

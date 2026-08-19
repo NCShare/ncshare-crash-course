@@ -8,32 +8,14 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=/work/%u/ncshare-crash-course/logs/%x-%j.out
 
-set -euo pipefail
+set -e
 
 COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 
-if [[ ! -f "$COURSE_IMAGE" ]]; then
-  echo "Course image not found: $COURSE_IMAGE" >&2
-  exit 2
-fi
-
-if [[ -z "${SOURCE_H5:-}" ]]; then
-  SOURCE_DIR="$COURSE_WORK/inoisy/four-ranks"
-  SOURCE_H5=""
-  if [[ -d "$SOURCE_DIR" ]]; then
-    while IFS= read -r -d '' candidate; do
-      if [[ -z "$SOURCE_H5" || "$candidate" -nt "$SOURCE_H5" ]]; then
-        SOURCE_H5="$candidate"
-      fi
-    done < <(find "$SOURCE_DIR" -maxdepth 1 -type f -name '*.h5' -print0)
-  fi
-fi
-
-if [[ -z "$SOURCE_H5" || ! -f "$SOURCE_H5" ]]; then
-  echo "No inoisy+ HDF5 input found; set SOURCE_H5 and resubmit." >&2
-  exit 3
-fi
+# The four-rank exercise creates one small HDF5 file. If the exercise was run
+# more than once, use the newest file.
+SOURCE_H5=$(ls -t "$COURSE_WORK"/inoisy/four-ranks/*.h5 | head -n 1)
 
 OUTDIR="$COURSE_WORK/inoisy/postprocessed"
 mkdir -p "$OUTDIR"
@@ -44,10 +26,6 @@ apptainer exec --cleanenv \
   python /opt/inoisy4d/tools/inoisy4d_to_visit_emissivity.py \
   "$SOURCE_H5" \
   --output-prefix "$OUTDIR/inoisy_lowres_emissivity" \
-  --write-components \
-  --write-envelopes \
-  --compress \
-  --float32 \
   --force
 
 echo "Input: $SOURCE_H5"
