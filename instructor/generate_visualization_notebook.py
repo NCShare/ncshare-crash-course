@@ -57,8 +57,8 @@ scientific questions. The examples come from two very different workflows:
 
 The science differs, but the plotting decisions transfer. We will make four
 principal figures—two from each workflow—and use each to learn a different
-lesson. Real course outputs are preferred. Clearly labelled bundled data keep
-the lesson runnable when a job is still queued.
+lesson. The inoisy figures use only the files produced in the CPU and
+post-processing exercises.
 """
         ),
         md(
@@ -91,6 +91,15 @@ The goal here is not to survey every chart type. It is to practice a compact
 decision process: **question → data → encoding → checks → communication**.
 """
         ),
+        md(
+            r"""
+## Set up Python and the plot style
+
+The first cell imports the libraries used in the notebook and prints their
+versions. Recording versions matters because plotting defaults and file support
+can change between software releases.
+"""
+        ),
         code(
             r"""
 from pathlib import Path
@@ -104,6 +113,32 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm, TwoSlopeNorm
 import numpy as np
+
+print("Python:", sys.version.split()[0])
+print("NumPy:", np.__version__)
+print("h5py:", h5py.__version__)
+print("Matplotlib:", mpl.__version__)
+"""
+        ),
+        md(
+            r"""
+### Choose consistent defaults
+
+Matplotlib stores its default appearance in `rcParams`. Updating these values
+once keeps the figures consistent:
+
+- `font.family` and the three size settings make the text readable;
+- hiding the top and right spines reduces unnecessary borders;
+- `figure.dpi` controls notebook display resolution;
+- `savefig.dpi` gives exported PNG files higher resolution; and
+- `savefig.bbox="tight"` avoids cutting off labels when a figure is saved.
+
+These are choices, not universal rules. A journal, poster, or presentation may
+need different font sizes or resolution.
+"""
+        ),
+        code(
+            r"""
 
 mpl.rcParams.update(
     {
@@ -125,125 +160,46 @@ BLUE = "#2A78D6"
 ORANGE = "#D95F02"
 GRAY = "#5B5B5B"
 GRID = "#DEDEDE"
-
-print("Python:", sys.version.split()[0])
-print("NumPy:", np.__version__)
-print("h5py:", h5py.__version__)
-print("Matplotlib:", mpl.__version__)
 """
         ),
         md(
             r"""
-## 0. Locate the data and state what is real
+## 0. Locate the files produced during the course
 
-A figure is evidence only if we know what data it shows. This cell searches in
-the same order used throughout the course:
+A figure is evidence only if we know what data it shows. The inoisy portion of
+this notebook expects the outputs from the earlier exercises:
 
-1. an explicit environment-variable override;
-2. results produced in `$COURSE_WORK`; and
-3. a bundled fallback.
+1. the four-rank HDF5 file from the CPU tutorial; and
+2. the emissivity HDF5 file from the post-processing job.
 
-The inoisy fallback matches the real HDF5 schema but is synthetic. The bundled
-QuantUI timing samples are real NCShare measurements; the bundled geometry
-trajectory is synthetic and carries a warning in its JSON and plot.
+There is no synthetic inoisy fallback. If either file is missing, run the
+corresponding exercise before continuing. QuantUI inputs are handled later,
+when that part of the notebook begins.
 """
         ),
         code(
             r"""
-def find_course_root(start: Path) -> Path:
-    # Walk upward until the course README and tutorials directory are found.
-    for candidate in (start, *start.parents):
-        if (candidate / "README.md").exists() and (candidate / "tutorials").exists():
-            return candidate
-    raise FileNotFoundError("Open this notebook from inside the course repository.")
-
-
-def newest(paths):
-    # Return the most recently modified path, or None for an empty iterable.
-    paths = list(paths)
-    return max(paths, key=lambda path: path.stat().st_mtime) if paths else None
-
-
-course_root = find_course_root(Path.cwd().resolve())
+course_root = Path.home() / "ncshare-crash-course"
 lesson_dir = course_root / "tutorials" / "05-visualization-postprocessing"
 data_dir = lesson_dir / "data"
 
-default_work = Path(f"/work/{os.environ.get('USER', 'student')}/ncshare-crash-course")
-course_work = Path(os.environ.get("COURSE_WORK", default_work)).expanduser()
-if not course_work.parent.exists():
-    # Local testing outside NCShare remains inside the repository.
-    course_work = course_root / "artifacts"
-course_work.mkdir(parents=True, exist_ok=True)
+course_work = Path("/work") / os.environ["USER"] / "ncshare-crash-course"
 
-# Raw inoisy field.
-raw_override = os.environ.get("INOISY_H5")
-raw_real = newest(course_work.glob("inoisy/four-ranks/*.h5"))
-if raw_override:
-    raw_path = Path(raw_override).expanduser().resolve()
-    raw_kind = "explicit INOISY_H5"
-elif raw_real:
-    raw_path = raw_real.resolve()
-    raw_kind = "student four-rank result"
-else:
-    raw_path = (data_dir / "sample_inoisy4d_lowres.h5").resolve()
-    raw_kind = "SYNTHETIC bundled inoisy fallback"
+# The CPU exercise normally produces one HDF5 file in this directory.
+raw_path = sorted((course_work / "inoisy" / "four-ranks").glob("*.h5"))[-1]
 
-# Post-processed inoisy emissivity.
-processed_override = os.environ.get("INOISY_EMISSIVITY_H5")
-processed_real = newest(course_work.glob("inoisy/postprocessed/*emissivity*.h5"))
-if processed_override:
-    processed_path = Path(processed_override).expanduser().resolve()
-    processed_kind = "explicit INOISY_EMISSIVITY_H5"
-elif processed_real:
-    processed_path = processed_real.resolve()
-    processed_kind = "student post-processed result"
-else:
-    processed_path = (data_dir / "sample_inoisy4d_emissivity.h5").resolve()
-    processed_kind = "SYNTHETIC bundled emissivity fallback"
-
-# QuantUI timing and trajectory inputs are selected independently. A normal GPU
-# verification creates quantui_gpu_result.json, but that file alone is not a
-# timing sweep and must not suppress the bundled timing fallback.
-quantui_override = os.environ.get("QUANTUI_RESULTS")
-quantui_override_dir = (
-    Path(quantui_override).expanduser().resolve() if quantui_override else None
+# The post-processing job writes this fixed filename.
+processed_path = (
+    course_work
+    / "inoisy"
+    / "postprocessed"
+    / "inoisy_lowres_emissivity.h5"
 )
-quantui_real_dir = (course_work / "quantui").resolve()
-quantui_sample_dir = (data_dir / "sample_quantui").resolve()
-
-if quantui_override_dir is not None:
-    comparison_dir = quantui_override_dir
-    comparison_kind = "explicit QUANTUI_RESULTS"
-elif quantui_real_dir.is_dir() and any(
-    quantui_real_dir.glob("cpu_gpu_comparison_*.json")
-):
-    comparison_dir = quantui_real_dir
-    comparison_kind = "student CPU/GPU comparison results"
-else:
-    comparison_dir = quantui_sample_dir
-    comparison_kind = "bundled real NCShare timing samples"
-
-trajectory_candidates = [
-    directory / "geometry_optimization_water.json"
-    for directory in (quantui_override_dir, quantui_real_dir)
-    if directory is not None
-]
-trajectory_path = next((path for path in trajectory_candidates if path.is_file()), None)
-if trajectory_path is None:
-    trajectory_path = quantui_sample_dir / "geometry_optimization_water.json"
-    trajectory_kind = "SYNTHETIC bundled geometry trajectory"
-else:
-    trajectory_path = trajectory_path.resolve()
-    trajectory_kind = "student geometry trajectory"
-
-for path in (raw_path, processed_path, comparison_dir, trajectory_path):
-    if not path.exists():
-        raise FileNotFoundError(path)
+raw_kind = "four-rank course output"
+processed_kind = "course post-processing output"
 
 print(f"inoisy raw:       {raw_kind}\n  {raw_path}")
 print(f"inoisy processed: {processed_kind}\n  {processed_path}")
-print(f"QuantUI timings:  {comparison_kind}\n  {comparison_dir}")
-print(f"QuantUI geometry: {trajectory_kind}\n  {trajectory_path}")
 """
         ),
         md(
@@ -259,56 +215,43 @@ That question needs a two-dimensional spatial slice of a signed scalar field.
 It does not require loading the complete four-dimensional array. HDF5 exposes
 `shape` and `dtype` without reading the data; slicing reads only the requested
 plane. This matters when a production field is larger than memory.
+
+In h5py, `[()]` reads one scalar value such as a grid spacing. The slice
+`[time_index, :, :, z_index]` reads every x and y cell at one time and one
+height. A colon means “all entries along this dimension.”
 """
         ),
         code(
             r"""
-def scalar(handle: h5py.File, path: str) -> float:
-    return float(np.asarray(handle[path]))
-
-
 with h5py.File(raw_path, "r") as handle:
     dataset = handle["/data/data_raw"]
     shape = tuple(dataset.shape)
     dtype = dataset.dtype
-    fallback_flag = bool(handle["/params"].attrs.get("course_fallback", False))
-    x_start, y_start, z_start = (
-        scalar(handle, "/params/x1start"),
-        scalar(handle, "/params/x2start"),
-        scalar(handle, "/params/x3start"),
-    )
-    dx, dy, dz = (
-        scalar(handle, "/params/dx1"),
-        scalar(handle, "/params/dx2"),
-        scalar(handle, "/params/dx3"),
-    )
-    t_start, dt = scalar(handle, "/params/x0start"), scalar(handle, "/params/dx0")
+    nt, nx, ny, nz = shape
 
-if len(shape) != 4:
-    raise ValueError(f"Expected [time, x, y, z], found {shape}")
+    # Choose the third time and the middle z plane for this exercise.
+    time_index = 2
+    z_index = nz // 2
+    raw_xy = np.asarray(dataset[time_index, :, :, z_index])
 
-nt, nx, ny, nz = shape
-time_index = min(2, nt - 1)
-z_index = nz // 2
+    t_start = float(handle["/params/x0start"][()])
+    x_start = float(handle["/params/x1start"][()])
+    y_start = float(handle["/params/x2start"][()])
+    z_start = float(handle["/params/x3start"][()])
+    dt = float(handle["/params/dx0"][()])
+    dx = float(handle["/params/dx1"][()])
+    dy = float(handle["/params/dx2"][()])
+    dz = float(handle["/params/dx3"][()])
 
-with h5py.File(raw_path, "r") as handle:
-    # Only one x-y plane enters memory.
-    raw_xy = np.asarray(handle["/data/data_raw"][time_index, :, :, z_index])
-
-if not np.isfinite(raw_xy).all():
-    raise ValueError("Selected inoisy slice contains NaN or infinite values.")
-
-times = t_start + dt * np.arange(nt)
-x_edges = x_start + dx * np.arange(nx + 1)
-y_edges = y_start + dy * np.arange(ny + 1)
-extent_xy = [x_edges[0], x_edges[-1], y_edges[0], y_edges[-1]]
+selected_time = t_start + time_index * dt
+selected_z = z_start + (z_index + 0.5) * dz
+extent_xy = [x_start, x_start + nx * dx, y_start, y_start + ny * dy]
 raw_bound = float(np.percentile(np.abs(raw_xy), 98))
 
 print("Dataset shape [time, x, y, z]:", shape)
 print("Stored dtype:", dtype)
-print("Synthetic flag in file:", fallback_flag)
 print(f"Full array would occupy {np.prod(shape) * dtype.itemsize / 1024**2:.3f} MiB")
-print(f"Selected t={times[time_index]:.3g}; mid-plane z≈{z_start + (z_index + 0.5)*dz:.3g}")
+print(f"Selected t={selected_time:.3g}; mid-plane z≈{selected_z:.3g}")
 print(f"Slice min / median / max: {raw_xy.min():.3g} / {np.median(raw_xy):.3g} / {raw_xy.max():.3g}")
 """
         ),
@@ -338,17 +281,11 @@ image = ax.imshow(
     aspect="equal",
 )
 ax.set(
-    title=f"inoisy signed field at t={times[time_index]:.3g} (98% |value| limit)",
+    title=f"inoisy signed field at t={selected_time:.3g} (98% |value| limit)",
     xlabel="x [code units]",
     ylabel="y [code units]",
 )
 fig_inoisy_field.colorbar(image, ax=ax, label="Raw GRF [arbitrary units]")
-if "SYNTHETIC" in raw_kind:
-    ax.text(
-        0.02, 0.02, "SYNTHETIC FALLBACK", transform=ax.transAxes,
-        color="black", fontsize=9, fontweight="bold",
-        bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"},
-    )
 plt.show()
 """
         ),
@@ -372,52 +309,44 @@ signed deviations measured in standard deviations, so zero-centered diverging
 color remains appropriate. Emissivity is positive and spans a wide dynamic
 range, so ordered sequential color with logarithmic normalization is more
 informative. A log scale is valid only for positive values.
+
+The post-processor names each time step with six digits. For example, time index
+2 is stored as `Fhat_000002` and `emissivity_000002`. These three-dimensional
+arrays are ordered `[z, y, x]`, so taking the middle z entry produces a y-x
+image. We calculate display limits from the plotted slice, not the full file.
 """
         ),
         code(
             r"""
-with h5py.File(processed_path, "r") as handle:
-    data_names = sorted(handle["/data"].keys())
-    fhat_names = [name for name in data_names if name.startswith("Fhat_")]
-    emissivity_names = [name for name in data_names if name.startswith("emissivity_")]
-    processed_times = np.asarray(handle["/data/time"][:])
-    processed_x_start = scalar(handle, "/params/x1start")
-    processed_y_start = scalar(handle, "/params/x2start")
-    processed_dx = scalar(handle, "/params/dx1")
-    processed_dy = scalar(handle, "/params/dx2")
+processed_index = 2
+suffix = f"{processed_index:06d}"
 
-if not fhat_names or not emissivity_names:
-    raise ValueError("Processed file lacks standardized or emissivity datasets.")
-
-processed_index = min(2, len(fhat_names) - 1, len(emissivity_names) - 1)
 with h5py.File(processed_path, "r") as handle:
-    # Processed volumes are stored [z, y, x].
-    fhat_zyx = np.asarray(handle[f"/data/{fhat_names[processed_index]}"])
-    emissivity_zyx = np.asarray(handle[f"/data/{emissivity_names[processed_index]}"])
+    fhat_zyx = np.asarray(handle[f"/data/Fhat_{suffix}"])
+    emissivity_zyx = np.asarray(handle[f"/data/emissivity_{suffix}"])
+    processed_time = float(handle["/data/time"][processed_index])
+    processed_x_start = float(handle["/params/x1start"][()])
+    processed_y_start = float(handle["/params/x2start"][()])
+    processed_dx = float(handle["/params/dx1"][()])
+    processed_dy = float(handle["/params/dx2"][()])
 
 processed_z = fhat_zyx.shape[0] // 2
 fhat_yx = fhat_zyx[processed_z]
 emissivity_yx = emissivity_zyx[processed_z]
 
 processed_ny, processed_nx = fhat_yx.shape
-processed_x_edges = processed_x_start + processed_dx * np.arange(processed_nx + 1)
-processed_y_edges = processed_y_start + processed_dy * np.arange(processed_ny + 1)
 processed_extent = [
-    processed_x_edges[0], processed_x_edges[-1],
-    processed_y_edges[0], processed_y_edges[-1],
+    processed_x_start,
+    processed_x_start + processed_nx * processed_dx,
+    processed_y_start,
+    processed_y_start + processed_ny * processed_dy,
 ]
 
-fhat_finite = fhat_yx[np.isfinite(fhat_yx)]
 emissivity_positive = emissivity_yx[np.isfinite(emissivity_yx) & (emissivity_yx > 0)]
-if not len(fhat_finite) or not len(emissivity_positive):
-    raise ValueError("Processed slice lacks finite standardized or positive emissivity values.")
-
-fhat_bound = float(np.percentile(np.abs(fhat_finite), 98))
+fhat_bound = float(np.percentile(np.abs(fhat_yx), 98))
 em_limits = np.percentile(emissivity_positive, [2, 98]).astype(float)
-if em_limits[0] == em_limits[1]:
-    em_limits[1] = np.nextafter(em_limits[1], np.inf)
 
-print(f"Standardized field: median={np.median(fhat_finite):.3g}, 98% |value|={fhat_bound:.3g}")
+print(f"Standardized field: median={np.median(fhat_yx):.3g}, 98% |value|={fhat_bound:.3g}")
 print(f"Positive emissivity: 2nd–98th percentiles={em_limits[0]:.3g}, {em_limits[1]:.3g}")
 """
         ),
@@ -458,14 +387,9 @@ fig_inoisy_transform.colorbar(
     im1, ax=axes[1], label="Emissivity [arbitrary units; log color scale]"
 )
 fig_inoisy_transform.suptitle(
-    f"Post-processed time t={processed_times[processed_index]:.3g}, mid-plane; "
+    f"Post-processed time t={processed_time:.3g}, mid-plane; "
     "displayed limits use 2nd–98th percentiles"
 )
-if "SYNTHETIC" in processed_kind:
-    fig_inoisy_transform.text(
-        0.5, 0.01, "SYNTHETIC POST-PROCESSING FALLBACK",
-        ha="center", fontsize=9, fontweight="bold",
-    )
 plt.show()
 """
         ),
@@ -495,6 +419,47 @@ summary and spread, control warm-up, and document node occupancy.
         ),
         code(
             r"""
+# QuantUI keeps its existing input-selection rules. They are introduced here,
+# separately from the shorter inoisy workflow above.
+quantui_override = os.environ.get("QUANTUI_RESULTS")
+quantui_override_dir = (
+    Path(quantui_override).expanduser().resolve() if quantui_override else None
+)
+quantui_real_dir = (course_work / "quantui").resolve()
+quantui_sample_dir = (data_dir / "sample_quantui").resolve()
+
+if quantui_override_dir is not None:
+    comparison_dir = quantui_override_dir
+    comparison_kind = "explicit QUANTUI_RESULTS"
+elif quantui_real_dir.is_dir() and any(
+    quantui_real_dir.glob("cpu_gpu_comparison_*.json")
+):
+    comparison_dir = quantui_real_dir
+    comparison_kind = "student CPU/GPU comparison results"
+else:
+    comparison_dir = quantui_sample_dir
+    comparison_kind = "bundled real NCShare timing samples"
+
+trajectory_candidates = [
+    directory / "geometry_optimization_water.json"
+    for directory in (quantui_override_dir, quantui_real_dir)
+    if directory is not None
+]
+trajectory_path = next((path for path in trajectory_candidates if path.is_file()), None)
+if trajectory_path is None:
+    trajectory_path = quantui_sample_dir / "geometry_optimization_water.json"
+    trajectory_kind = "SYNTHETIC bundled geometry trajectory"
+else:
+    trajectory_path = trajectory_path.resolve()
+    trajectory_kind = "student geometry trajectory"
+
+for path in (comparison_dir, trajectory_path):
+    if not path.exists():
+        raise FileNotFoundError(path)
+
+print(f"QuantUI timings:  {comparison_kind}\n  {comparison_dir}")
+print(f"QuantUI geometry: {trajectory_kind}\n  {trajectory_path}")
+
 PRESET_ORDER = ("small", "medium", "crossover", "large")
 comparison = []
 comparison_paths = []
