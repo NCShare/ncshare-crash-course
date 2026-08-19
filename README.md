@@ -1,7 +1,3 @@
-**Note 08/18**: The finalized version will be posted in:
-
-https://github.com/NCShare/ncshare-crash-course
-
 # NCShare Crash Course
 
 A one-day, hands-on introduction to NCShare for new HPC users. The exercises use the official [NCShare user guides](https://userguide.ncshare.org/guides/) and [NCShare examples](https://github.com/NCShare/examples), then move through two science applications: `inoisy4d` C/MPI application, a GPU-enabled QuantUI calculation, and scientific visualization/post-processing.
