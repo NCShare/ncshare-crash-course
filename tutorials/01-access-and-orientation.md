@@ -82,11 +82,11 @@ Git records versions of a collection of files called a **repository**. The comma
 
 ```bash
 cd "$HOME"
-git clone https://github.com/NCShare/examples.git
-cd examples
+git clone https://github.com/NCShare/ncshare-crash-course.git
+cd ncshare-crash-course
 find . -maxdepth 2 -type f | sort
 less README.md
-less Apptainer-Recipe-for-FHI-aims/fhiaims.def
+less containers/ncshare-science-course.def
 ```
 
 - `find` searches below a path. Here `-maxdepth 2` prevents a deep recursive search and `-type f` selects ordinary files.
@@ -97,7 +97,7 @@ less Apptainer-Recipe-for-FHI-aims/fhiaims.def
 
 If the repository already exists, update it instead of cloning a second copy:
 ```bash
-cd "$HOME/examples"
+cd "$HOME/tutorials"
 git pull 
 ```
 
