@@ -155,7 +155,7 @@ cp "$WORKDIR/inputs/"* "$SCRATCH/"
 # 2. Do the work in /scratch
 cd "$SCRATCH"
 echo "Running on $(hostname) in $SCRATCH"
-python -c "open('result.dat','w').write('done\n')"
+python3 -c "open('result.dat','w').write('done\n')"
 
 # 3. Copy results back to /work BEFORE the job ends
 cp "$SCRATCH/result.dat" "$WORKDIR/outputs/"
