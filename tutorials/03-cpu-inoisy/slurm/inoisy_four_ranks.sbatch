@@ -8,25 +8,15 @@
 #SBATCH --time=00:10:00
 #SBATCH --output=/work/%u/ncshare-crash-course/logs/%x-%j.out
 
-set -euo pipefail
+set -e
 
 COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
 COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
 OUTDIR="$COURSE_WORK/inoisy/four-ranks"
 
-if [[ ! -f "$COURSE_IMAGE" ]]; then
-  echo "Course image not found: $COURSE_IMAGE" >&2
-  exit 2
-fi
-
 mkdir -p "$OUTDIR"
 
 echo "job_id=$SLURM_JOB_ID host=$(hostname) ranks=$SLURM_NTASKS"
-echo "course_image=$COURSE_IMAGE"
-apptainer inspect "$COURSE_IMAGE" \
-  | grep -E 'BaseImage|HYPREVersion|inoisy4dSelection|BlueprintVersion' || true
-echo -n "inoisy4d_resolved_commit="
-apptainer exec "$COURSE_IMAGE" cat /opt/course-build/inoisy4d-commit.txt
 
 # This single-node workshop job uses the MPI launcher packaged in the image.
 apptainer exec --cleanenv \
