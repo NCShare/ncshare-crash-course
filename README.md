@@ -65,3 +65,7 @@ The definition file downloads upstream source and compiles/installs it without a
 - [hypre-space/hypre](https://github.com/hypre-space/hypre)
 
 The container base, NCShare paths, partitions, and upstream source-selection policy reflect documentation and repositories checked on July 29, 2026. HPC administrators should rebuild/test the SIF and validate current policy before each course offering. Module names appear only in the optional traditional-HPC bonus and must be customized for that site.
+
+## Additional links of relevance
+
+- [NCShare User Guide](https://userguide.ncshare.org/)
