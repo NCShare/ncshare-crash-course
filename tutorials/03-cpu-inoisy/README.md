@@ -55,17 +55,15 @@ The Slurm request, MPI rank count, and application's processor grid must agree.
 Set the shared paths:
 
 ```bash
-export COURSE_ROOT="${COURSE_ROOT:-$HOME/ncshare-crash-course}"
-export COURSE_WORK="${COURSE_WORK:-/work/$USER/ncshare-crash-course}"
-export COURSE_IMAGE="${COURSE_IMAGE:-/opt/apps/containers/users/ncshare-science-course.sif}"
-mkdir -p "$COURSE_WORK"/{logs,inoisy}
+export COURSE_ROOT="$HOME/ncshare-crash-course"
+export COURSE_WORK="/work/$USER/ncshare-crash-course"
+export COURSE_IMAGE="/opt/apps/containers/users/ncshare-science-course.sif"
+mkdir -p "$COURSE_WORK/logs" "$COURSE_WORK/inoisy"
 ```
 
-These exported variables give short, consistent names to the repository,
-active workspace, and SIF. `${NAME:-default}` means “use the current value of
-`NAME` if it exists; otherwise use this default.” This lets an instructor
-override a path without editing every command. `mkdir -p` creates the log and
-result directories before Slurm tries to use them.
+These exported variables give short names to the repository, active workspace,
+and SIF. `mkdir -p` creates the log and result directories before Slurm tries to
+use them.
 
 ## 0-8 min — Inspect the application environment
 
@@ -143,7 +141,6 @@ Open:
 Both jobs:
 
 - request one node, modest memory, and ten minutes;
-- identify the SIF with `apptainer inspect`;
 - bind the host work directory;
 - start the MPI launcher **inside** the image, following NCShare's documented
   single-node container pattern; and
@@ -180,72 +177,50 @@ Slurm opens the log before the job body starts, so create the directory first:
 ```bash
 mkdir -p "$COURSE_WORK/logs"
 cd "$COURSE_ROOT/tutorials/03-cpu-inoisy"
-JOB_ONE=$(sbatch --parsable --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
-  slurm/inoisy_one_rank.sbatch)
-JOB_FOUR=$(sbatch --parsable --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
-  slurm/inoisy_four_ranks.sbatch)
-echo "one-rank job:  $JOB_ONE"
-echo "four-rank job: $JOB_FOUR"
+sbatch --parsable --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/inoisy_one_rank.sbatch
+sbatch --parsable --export=ALL,COURSE_IMAGE="$COURSE_IMAGE" \
+  slurm/inoisy_four_ranks.sbatch
 ```
 
 `sbatch FILE` submits a batch script and returns immediately with a numeric job
 ID. It does not run the program in the login shell. `--export=ALL` passes the
 current environment variables to the job, and the comma-separated assignment
-explicitly passes `COURSE_IMAGE`. `--parsable` makes `sbatch` print just the
-numeric ID, so `JOB_ONE=$(...)` and `JOB_FOUR=$(...)` capture the two IDs into
-shell variables you reuse below — no hand-copying of numbers. The trailing
-backslash only wraps each long command for readability.
-
-These variables live only in this shell session. If you open a new terminal or
-your session drops, list your jobs with `squeue -u "$USER"` and set them again,
-e.g. `JOB_ONE=709747`.
+explicitly passes `COURSE_IMAGE`. `--parsable` makes `sbatch` print only the job
+ID. Write down the two IDs; the first belongs to the one-rank job and the second
+to the four-rank job. The trailing backslash only wraps a long command onto the
+next display line.
 
 ## 28-35 min — Monitor and diagnose
 
 ```bash
 squeue -u "$USER"
-squeue -j "$JOB_ONE,$JOB_FOUR" -o "%.18i %.9T %.10M %.6D %.30R"
-scontrol show job "$JOB_ONE"
+scontrol show job JOB_ID
 ```
 
 - `squeue -u "$USER"` lists all of your queued and running jobs.
-- `squeue -j "$JOB_ONE,$JOB_FOUR"` selects just these two jobs (a
-  comma-separated list of IDs).
-- `-o` supplies a custom output format. The apparently cryptic string is a
-  compact set of column specifications:
-
-  | Code | Meaning | Width/style |
-  |---|---|---|
-  | `%.18i` | job ID | right-aligned in 18 characters |
-  | `%.9T` | full job state | right-aligned in 9 characters |
-  | `%.10M` | elapsed time | right-aligned in 10 characters |
-  | `%.6D` | node count | right-aligned in 6 characters |
-  | `%.30R` | assigned nodes or pending reason | right-aligned in 30 characters |
-
-  The leading dot requests right alignment; the number is the column width.
-  This formatting changes only what `squeue` displays, not the job.
-- `scontrol show job "$JOB_ONE"` prints the scheduler's detailed record for one
-  job, including requested resources and a pending reason when it has not
-  started.
+- `scontrol show job JOB_ID` prints the detailed scheduler record for one job.
+  Replace `JOB_ID` with either number printed by `sbatch`.
 
 Common states are `PENDING` (waiting), `RUNNING`, `COMPLETED`, `FAILED`, and
-`CANCELLED`. A pending job is not necessarily broken; the `%R` column explains
-what it is waiting for.
+`CANCELLED`. A pending job is not necessarily broken; the final `squeue` column
+normally explains what it is waiting for.
 
 After completion:
 
 ```bash
-sacct -j "$JOB_ONE,$JOB_FOUR" --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode
-less "$COURSE_WORK/logs/inoisy-one-$JOB_ONE.out"
-less "$COURSE_WORK/logs/inoisy-four-$JOB_FOUR.out"
+sacct -j JOB_ID --format=JobID,State,Elapsed,AllocCPUS,MaxRSS,ExitCode
+less "$COURSE_WORK/logs/inoisy-one-JOB_ID.out"
+less "$COURSE_WORK/logs/inoisy-four-JOB_ID.out"
 ```
 
 `sacct` reads accounting information for current or completed jobs. Its
 `--format` value is a comma-separated list of columns: job ID, final state,
 elapsed time, allocated CPUs, peak resident memory, and exit status. An exit
 code of `0:0` normally indicates that the batch script and its Slurm step
-exited successfully. `less` opens each text log; press `/` to search and `q` to
-quit. Substitute the actual job ID in each filename.
+exited successfully. Use the one-rank ID with the `inoisy-one` log and the
+four-rank ID with the `inoisy-four` log. `less` opens a text log; press `/` to
+search and `q` to quit.
 
 Separate three failure layers:
 
@@ -292,13 +267,11 @@ apptainer inspect "$COURSE_IMAGE" \
   | grep -E 'BaseImage|HYPREVersion|inoisy4dSelection|BlueprintVersion'
 apptainer exec "$COURSE_IMAGE" \
   cat /opt/course-build/inoisy4d-commit.txt
-cat "$COURSE_IMAGE.sha256" 2>/dev/null || sha256sum "$COURSE_IMAGE"
+sha256sum "$COURSE_IMAGE"
 ```
 
 `grep -E` selects any label matching the alternatives separated by `|`.
-`2>/dev/null` hides only the error message if a neighboring checksum file does
-not exist. `||` means “run the command on the right only if the command on the
-left failed,” so the image is checksummed directly as a fallback.
+`sha256sum` prints a checksum that identifies the exact SIF file.
 
 The image label states the source-selection policy; the file printed by `cat`
 contains the exact commit resolved when this SIF was built. Record that commit
@@ -314,7 +287,7 @@ stack used to produce the result.
 | image not found | `ls -l "$COURSE_IMAGE"` | use the instructor-published path |
 | bind error | host directory exists | create it before `apptainer exec` |
 | process-grid error | task count and `-pgrid` product | make them agree |
-| job pending | `squeue ... %R` | read the scheduler reason |
+| job pending | final `squeue` column | read the scheduler reason |
 | no log | log directory and `#SBATCH --output` | create the directory first |
 | no HDF5 | application log and output bind | fix the first application error |
 | multi-node launch fails | MPI compatibility model | return to one node; consult admins |
